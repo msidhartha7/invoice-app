@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Sparkles, FileText } from 'lucide-react'
 import { CameraCapture } from '../components/CameraCapture'
-import { VoiceRecorder } from '../components/VoiceRecorder'
 import { processIntake } from '../lib/api'
 import { AppLayout } from '../layouts/AppLayout'
 import { useAppStore } from '../store/appStore'
@@ -42,7 +41,7 @@ export default function NewInvoice() {
 
         <h1 className="text-2xl font-bold text-[#1A1A1A] mb-2">New Invoice</h1>
         <p className="text-[#888] text-sm mb-8">
-          Snap a photo of your notes or dictate the details — AI handles the rest.
+          Snap a photo of your notes — AI handles the rest.
         </p>
 
         {draftForm && (
@@ -65,15 +64,6 @@ export default function NewInvoice() {
         <div className="flex flex-col gap-4">
           <CameraCapture
             onCapture={(file) => handleProcess(file, 'image')}
-            isLoading={isProcessing}
-          />
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-[#E8E8E8]" />
-            <span className="text-xs text-[#BBB] font-medium">or</span>
-            <div className="flex-1 h-px bg-[#E8E8E8]" />
-          </div>
-          <VoiceRecorder
-            onRecorded={(blob) => handleProcess(blob, 'audio')}
             isLoading={isProcessing}
           />
         </div>

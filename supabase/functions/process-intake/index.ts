@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { encode as base64Encode } from 'https://deno.land/std@0.168.0/encoding/base64.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -62,10 +63,7 @@ serve(async (req) => {
 
     if (type === 'image') {
       const bytes = await file.arrayBuffer()
-      const uint8 = new Uint8Array(bytes)
-      let binary = ''
-      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i])
-      const base64 = btoa(binary)
+      const base64 = base64Encode(bytes)
       const mimeType = file.type || 'image/jpeg'
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -109,7 +107,7 @@ serve(async (req) => {
       }
 
       const rawContent = aiResponse.choices?.[0]?.message?.content ?? ''
-      const jsonText = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+      const jsonText = rawContent.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim()
       try {
         extractedData = JSON.parse(jsonText)
       } catch {
@@ -117,8 +115,11 @@ serve(async (req) => {
         return json({ error: 'AI returned unparseable response', raw: rawContent }, 422)
       }
     } else {
+      const audioBlob = new Blob([await file.arrayBuffer()], {
+        type: file.type || 'audio/webm',
+      })
       const audioForm = new FormData()
-      audioForm.append('file', file, 'audio.webm')
+      audioForm.append('file', audioBlob, 'audio.webm')
       audioForm.append('model', 'whisper-1')
       audioForm.append('response_format', 'text')
 
@@ -173,7 +174,7 @@ serve(async (req) => {
       }
 
       const rawContent = parseData.choices?.[0]?.message?.content ?? ''
-      const jsonText = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+      const jsonText = rawContent.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim()
       try {
         extractedData = JSON.parse(jsonText)
       } catch {
