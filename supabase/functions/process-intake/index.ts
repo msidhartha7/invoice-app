@@ -62,7 +62,10 @@ serve(async (req) => {
 
     if (type === 'image') {
       const bytes = await file.arrayBuffer()
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)))
+      const uint8 = new Uint8Array(bytes)
+      let binary = ''
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i])
+      const base64 = btoa(binary)
       const mimeType = file.type || 'image/jpeg'
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -89,8 +92,30 @@ serve(async (req) => {
         }),
       })
 
-      const aiResponse = (await res.json()) as { choices: Array<{ message: { content: string } }> }
-      extractedData = JSON.parse(aiResponse.choices[0].message.content)
+      if (!res.ok) {
+        const errBody = await res.text()
+        console.error('OpenAI vision API error:', res.status, errBody)
+        return json({ error: `OpenAI API error: ${res.status}`, detail: errBody }, 502)
+      }
+
+      const aiResponse = (await res.json()) as {
+        choices?: Array<{ message: { content: string } }>
+        error?: { message: string }
+      }
+
+      if (aiResponse.error) {
+        console.error('OpenAI vision response error:', aiResponse.error)
+        return json({ error: `OpenAI error: ${aiResponse.error.message}` }, 502)
+      }
+
+      const rawContent = aiResponse.choices?.[0]?.message?.content ?? ''
+      const jsonText = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+      try {
+        extractedData = JSON.parse(jsonText)
+      } catch {
+        console.error('Failed to parse OpenAI vision response:', rawContent)
+        return json({ error: 'AI returned unparseable response', raw: rawContent }, 422)
+      }
     } else {
       const audioForm = new FormData()
       audioForm.append('file', file, 'audio.webm')
@@ -102,6 +127,13 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${openAIKey}` },
         body: audioForm,
       })
+
+      if (!whisperRes.ok) {
+        const errBody = await whisperRes.text()
+        console.error('Whisper API error:', whisperRes.status, errBody)
+        return json({ error: `Whisper API error: ${whisperRes.status}`, detail: errBody }, 502)
+      }
+
       const transcript = await whisperRes.text()
 
       const parseRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -124,8 +156,30 @@ serve(async (req) => {
         }),
       })
 
-      const parseData = (await parseRes.json()) as { choices: Array<{ message: { content: string } }> }
-      extractedData = JSON.parse(parseData.choices[0].message.content)
+      if (!parseRes.ok) {
+        const errBody = await parseRes.text()
+        console.error('OpenAI parse API error:', parseRes.status, errBody)
+        return json({ error: `OpenAI API error: ${parseRes.status}`, detail: errBody }, 502)
+      }
+
+      const parseData = (await parseRes.json()) as {
+        choices?: Array<{ message: { content: string } }>
+        error?: { message: string }
+      }
+
+      if (parseData.error) {
+        console.error('OpenAI parse response error:', parseData.error)
+        return json({ error: `OpenAI error: ${parseData.error.message}` }, 502)
+      }
+
+      const rawContent = parseData.choices?.[0]?.message?.content ?? ''
+      const jsonText = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+      try {
+        extractedData = JSON.parse(jsonText)
+      } catch {
+        console.error('Failed to parse OpenAI audio response:', rawContent)
+        return json({ error: 'AI returned unparseable response', raw: rawContent }, 422)
+      }
     }
 
     // Ensure all items have UUIDs
@@ -136,7 +190,8 @@ serve(async (req) => {
 
     return json(extractedData)
   } catch (err) {
-    console.error('process-intake error:', err)
-    return json({ error: 'Internal server error' }, 500)
+    console.error('process-intake unhandled error:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    return json({ error: message || 'Internal server error' }, 500)
   }
 })
