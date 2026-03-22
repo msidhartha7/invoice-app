@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import NewInvoice from './pages/NewInvoice'
 import InvoiceReview from './pages/InvoiceReview'
 import InvoiceSent from './pages/InvoiceSent'
+import InvoiceDetail from './pages/InvoiceDetail'
 
 // Dev-only router devtools
 const TanStackRouterDevtools = import.meta.env.DEV
@@ -119,6 +120,32 @@ const invoiceSentRoute = createRoute({
   component: InvoiceSent,
 })
 
+const invoiceDetailRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/invoice/$invoiceId',
+  loader: async ({ params }) => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', params.invoiceId)
+      .eq('user_id', _authState.user!.id)
+      .single()
+    if (error) throw error
+    return { invoice: data as Invoice }
+  },
+  staleTime: 30_000,
+  pendingComponent: Spinner,
+  errorComponent: ({ error }) => (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-[#FAFAFA] px-6">
+      <div className="text-center">
+        <p className="text-lg font-semibold text-[#1A1A1A] mb-1">Invoice not found</p>
+        <p className="text-sm text-[#888]">{(error as Error).message}</p>
+      </div>
+    </div>
+  ),
+  component: InvoiceDetail,
+})
+
 // Catch-all: redirect to /
 const catchAllRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -136,6 +163,7 @@ const routeTree = rootRoute.addChildren([
     newInvoiceRoute,
     invoiceReviewRoute,
     invoiceSentRoute,
+    invoiceDetailRoute,
   ]),
   catchAllRoute,
 ])

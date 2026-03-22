@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import type { Invoice } from '../types'
 
 const STATUS: Record<Invoice['status'], string> = {
@@ -7,6 +8,7 @@ const STATUS: Record<Invoice['status'], string> = {
 }
 
 export function InvoiceCard({ invoice }: { invoice: Invoice }) {
+  const navigate = useNavigate()
   const date = new Date(invoice.created_at).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -14,7 +16,10 @@ export function InvoiceCard({ invoice }: { invoice: Invoice }) {
   })
 
   return (
-    <div className="bg-white rounded-3xl border border-[#E8E8E8] p-5">
+    <div
+      className="bg-white rounded-3xl border border-[#E8E8E8] p-5 cursor-pointer active:scale-[0.98] transition"
+      onClick={() => navigate({ to: '/invoice/$invoiceId', params: { invoiceId: invoice.id } })}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-[#1A1A1A] truncate">{invoice.client_name}</p>
