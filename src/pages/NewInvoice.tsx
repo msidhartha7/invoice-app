@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Sparkles } from 'lucide-react'
+import { ArrowLeft, Sparkles, FileText } from 'lucide-react'
 import { CameraCapture } from '../components/CameraCapture'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { processIntake } from '../lib/api'
@@ -11,16 +11,16 @@ import type { ExtractedInvoiceData } from '../types'
 
 export default function NewInvoice() {
   const navigate = useNavigate()
-  const { setExtractedData, clearInvoiceFlow } = useAppStore()
+  const { draftForm, setExtractedData, clearInvoiceFlow } = useAppStore()
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
 
   async function handleProcess(file: File | Blob, type: 'image' | 'audio') {
     setIsProcessing(true)
     setError('')
-    clearInvoiceFlow()
     try {
       const data: ExtractedInvoiceData = await processIntake(file, type)
+      clearInvoiceFlow()
       setExtractedData(data)
       navigate('/invoice/review')
     } catch (err) {
@@ -44,6 +44,23 @@ export default function NewInvoice() {
         <p className="text-[#888] text-sm mb-8">
           Snap a photo of your notes or dictate the details — AI handles the rest.
         </p>
+
+        {draftForm && (
+          <button
+            onClick={() => navigate('/invoice/review')}
+            className="w-full mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-left active:scale-[0.98] transition"
+          >
+            <div className="w-10 h-10 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <FileText className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#1A1A1A]">Draft in progress</p>
+              <p className="text-xs text-[#888] mt-0.5">
+                {draftForm.clientName || 'Untitled'} — tap to continue editing
+              </p>
+            </div>
+          </button>
+        )}
 
         <div className="flex flex-col gap-4">
           <CameraCapture

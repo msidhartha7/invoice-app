@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getValidSession } from './supabase'
 import type { ExtractedInvoiceData } from '../types'
 
 const MOCK_EXTRACTED: ExtractedInvoiceData = {
@@ -33,15 +33,7 @@ export async function processIntake(
   file: File | Blob,
   type: 'image' | 'audio',
 ): Promise<ExtractedInvoiceData> {
-  let { data: sessionData } = await supabase.auth.getSession()
-  let session = sessionData.session
-
-  // Refresh the token if it's expired or about to expire (within 60s)
-  if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
-    const { data: refreshData } = await supabase.auth.refreshSession()
-    session = refreshData.session
-  }
-
+  const session = await getValidSession()
   if (!session) throw new Error('Not authenticated')
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL

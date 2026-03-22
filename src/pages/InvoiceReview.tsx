@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, getValidSession } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AppLayout } from '../layouts/AppLayout'
 import { useAppStore } from '../store/appStore'
@@ -11,21 +11,46 @@ import type { Invoice, LineItem } from '../types'
 export default function InvoiceReview() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { extractedData, setCurrentInvoice } = useAppStore()
+  const {
+    extractedData,
+    draftForm,
+    setDraftForm,
+    initDraftFromExtracted,
+    setCurrentInvoice,
+    clearInvoiceFlow,
+  } = useAppStore()
 
-  const [clientName, setClientName] = useState(extractedData?.client_name ?? '')
-  const [items, setItems] = useState<LineItem[]>(
-    (extractedData?.items ?? []).map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
-  )
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [touched, setTouched] = useState<Set<string>>(new Set())
+  const savedInvoiceRef = useRef<Invoice | null>(null)
 
-  if (!extractedData) return <Navigate to="/invoice/new" replace />
+  useEffect(() => {
+    initDraftFromExtracted()
+  }, [initDraftFromExtracted])
 
-  const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
+  if (!extractedData && !draftForm) return <Navigate to="/invoice/new" replace />
+
+  const clientName = draftForm?.clientName ?? ''
+  const items = draftForm?.items ?? []
+  const total = useMemo(() => items.reduce((sum, item) => sum + (item.amount || 0), 0), [items])
+
+  function markTouched(field: string) {
+    setTouched((prev) => new Set(prev).add(field))
+  }
+
+  function setClientName(name: string) {
+    if (!draftForm) return
+    setDraftForm({ ...draftForm, clientName: name })
+  }
+
+  function updateItems(updater: (prev: LineItem[]) => LineItem[]) {
+    if (!draftForm) return
+    setDraftForm({ ...draftForm, items: updater(draftForm.items) })
+  }
 
   function updateItem(id: string, field: keyof LineItem, value: string | number) {
-    setItems((prev) =>
+    updateItems((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item
         const updated = { ...item, [field]: value }
@@ -38,14 +63,51 @@ export default function InvoiceReview() {
   }
 
   function addItem() {
-    setItems((prev) => [
+    updateItems((prev) => [
       ...prev,
       { id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, amount: 0 },
     ])
   }
 
   function removeItem(id: string) {
-    setItems((prev) => prev.filter((item) => item.id !== id))
+    updateItems((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  async function createPaymentLink(invoice: Invoice): Promise<string> {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const session = await getValidSession()
+
+    if (supabaseUrl && session) {
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoice_id: invoice.id,
+          amount: invoice.total_amount,
+          client_name: invoice.client_name,
+        }),
+      })
+      if (!res.ok) {
+        const errData = (await res.json()) as { error?: string }
+        throw new Error(errData.error ?? `Payment service error: ${res.status}`)
+      }
+      const linkData = (await res.json()) as { payment_link?: string }
+      if (!linkData.payment_link) {
+        throw new Error('No payment link returned from payment processor')
+      }
+      return linkData.payment_link
+    }
+
+    // Mock fallback
+    const paymentLink = `https://pay.dodopayments.com/mock/${invoice.id}`
+    await supabase
+      .from('invoices')
+      .update({ payment_link: paymentLink, status: 'sent' })
+      .eq('id', invoice.id)
+    return paymentLink
   }
 
   async function handleSave() {
@@ -53,77 +115,66 @@ export default function InvoiceReview() {
     setIsSaving(true)
     setError('')
 
-    let savedInvoice: Invoice | undefined
+    try {
+      // Phase 1: Save invoice as draft
+      let invoice = savedInvoiceRef.current
+      if (!invoice) {
+        const { data, error: insertError } = await supabase
+          .from('invoices')
+          .insert({
+            user_id: user.id,
+            client_name: clientName.trim(),
+            items,
+            total_amount: total,
+            status: 'draft',
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+        invoice = data as Invoice
+        savedInvoiceRef.current = invoice
+      }
+
+      // Phase 2: Create payment link (best-effort)
+      const paymentLink = await createPaymentLink(invoice)
+      const sentInvoice: Invoice = { ...invoice, payment_link: paymentLink, status: 'sent' }
+      setCurrentInvoice(sentInvoice)
+      clearInvoiceFlow()
+      // Restore currentInvoice since clearInvoiceFlow clears it
+      useAppStore.getState().setCurrentInvoice(sentInvoice)
+      navigate('/invoice/sent')
+    } catch (err) {
+      const message = (err as Error).message || 'Failed to save invoice'
+      if (savedInvoiceRef.current) {
+        setError(`Invoice saved, but payment link creation failed. ${message}`)
+      } else {
+        setError(message)
+      }
+      setIsSaving(false)
+    }
+  }
+
+  async function handleRetryPaymentLink() {
+    if (!savedInvoiceRef.current) return
+    setIsSaving(true)
+    setError('')
 
     try {
-      const { data, error: insertError } = await supabase
-        .from('invoices')
-        .insert({
-          user_id: user.id,
-          client_name: clientName.trim(),
-          items,
-          total_amount: total,
-          status: 'draft',
-        })
-        .select()
-        .single()
-
-      if (insertError) throw insertError
-
-      savedInvoice = data as Invoice
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      let { data: sessionData } = await supabase.auth.getSession()
-      let session = sessionData.session
-
-      if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
-        const { data: refreshData } = await supabase.auth.refreshSession()
-        session = refreshData.session
-      }
-
-      let paymentLink: string
-
-      if (supabaseUrl && session) {
-        const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            invoice_id: savedInvoice.id,
-            amount: total,
-            client_name: clientName.trim(),
-          }),
-        })
-        if (!res.ok) {
-          const errData = (await res.json()) as { error?: string }
-          throw new Error(errData.error ?? `Payment service error: ${res.status}`)
-        }
-        const linkData = (await res.json()) as { payment_link?: string }
-        if (!linkData.payment_link) {
-          throw new Error('No payment link returned from payment processor')
-        }
-        paymentLink = linkData.payment_link
-      } else {
-        paymentLink = `https://pay.dodopayments.com/mock/${savedInvoice.id}`
-        await supabase
-          .from('invoices')
-          .update({ payment_link: paymentLink, status: 'sent' })
-          .eq('id', savedInvoice.id)
-      }
-
+      const paymentLink = await createPaymentLink(savedInvoiceRef.current)
       const sentInvoice: Invoice = {
-        ...savedInvoice,
+        ...savedInvoiceRef.current,
         payment_link: paymentLink,
         status: 'sent',
       }
       setCurrentInvoice(sentInvoice)
+      clearInvoiceFlow()
+      useAppStore.getState().setCurrentInvoice(sentInvoice)
       navigate('/invoice/sent')
     } catch (err) {
-      if (savedInvoice?.id) {
-        await supabase.from('invoices').delete().eq('id', savedInvoice.id)
-      }
-      setError((err as Error).message || 'Failed to save invoice')
+      setError(
+        `Invoice saved, but payment link creation failed. ${(err as Error).message || 'Please try again.'}`,
+      )
       setIsSaving(false)
     }
   }
@@ -138,12 +189,14 @@ export default function InvoiceReview() {
         </p>
       )}
       <button
-        onClick={handleSave}
+        onClick={savedInvoiceRef.current ? handleRetryPaymentLink : handleSave}
         disabled={isDisabled}
         className="w-full h-[56px] bg-[#6C47FF] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
       >
         {isSaving ? (
           <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        ) : savedInvoiceRef.current ? (
+          'Retry Payment Link'
         ) : (
           `Save & Send · $${total.toFixed(2)}`
         )}
@@ -171,9 +224,13 @@ export default function InvoiceReview() {
           <input
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
+            onBlur={() => markTouched('clientName')}
             placeholder="Client name"
             className="w-full h-[56px] px-4 rounded-2xl border border-[#E8E8E8] bg-white text-[#1A1A1A] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#6C47FF]/30 focus:border-[#6C47FF] transition"
           />
+          {touched.has('clientName') && !clientName.trim() && (
+            <p className="text-xs text-red-500 mt-1">Client name is required</p>
+          )}
         </div>
 
         <div className="mb-4">
@@ -200,12 +257,18 @@ export default function InvoiceReview() {
                 className="bg-white rounded-3xl border border-[#E8E8E8] p-4"
               >
                 <div className="flex items-start gap-2 mb-3">
-                  <input
-                    value={item.description}
-                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                    placeholder="Item description"
-                    className="flex-1 text-sm font-medium text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#BBB]"
-                  />
+                  <div className="flex-1">
+                    <input
+                      value={item.description}
+                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                      onBlur={() => markTouched(`item-${item.id}`)}
+                      placeholder="Item description"
+                      className="w-full text-sm font-medium text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#BBB]"
+                    />
+                    {touched.has(`item-${item.id}`) && !item.description.trim() && (
+                      <p className="text-xs text-red-500 mt-1">Description is required</p>
+                    )}
+                  </div>
                   <button
                     onClick={() => removeItem(item.id)}
                     aria-label="Remove item"
@@ -257,8 +320,14 @@ export default function InvoiceReview() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-            <p className="text-sm text-red-600">{error}</p>
+          <div
+            className={`rounded-2xl p-4 ${savedInvoiceRef.current ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'}`}
+          >
+            <p
+              className={`text-sm ${savedInvoiceRef.current ? 'text-amber-700' : 'text-red-600'}`}
+            >
+              {error}
+            </p>
           </div>
         )}
       </div>
