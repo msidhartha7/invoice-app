@@ -7,7 +7,7 @@ import { AppLayout } from '../layouts/AppLayout'
 import { downloadInvoicePDF } from '../lib/pdf'
 import { useAuth } from '../contexts/AuthContext'
 
-const routeApi = getRouteApi('/invoice/$invoiceId')
+const routeApi = getRouteApi('/authenticated/invoice/$invoiceId')
 
 const STATUS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
