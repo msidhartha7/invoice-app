@@ -13,6 +13,7 @@ export default function Dashboard() {
   const { user, profile, signOut } = useAuth()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -21,13 +22,12 @@ export default function Dashboard() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error: fetchError }) => {
+        if (fetchError) throw fetchError
         setInvoices((data as Invoice[]) ?? [])
       })
-      .then(
-        () => setIsLoading(false),
-        () => setIsLoading(false),
-      )
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setIsLoading(false))
   }, [user])
 
   const bottomBar = (
@@ -65,6 +65,18 @@ export default function Dashboard() {
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 rounded-full border-2 border-[#6C47FF] border-t-transparent animate-spin" />
           </div>
+        ) : error ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-20 text-center"
+          >
+            <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-4">
+              <FileText className="w-8 h-8 text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-[#1A1A1A] mb-1">Couldn't load invoices</h3>
+            <p className="text-sm text-[#888]">{error}</p>
+          </motion.div>
         ) : invoices.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Mic, MicOff } from 'lucide-react'
 
@@ -12,13 +12,24 @@ export function VoiceRecorder({ onRecorded, isLoading }: VoiceRecorderProps) {
   const [hasRecording, setHasRecording] = useState(false)
   const [permissionError, setPermissionError] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+    }
+  }, [])
 
   async function startRecording() {
     chunksRef.current = []
     setPermissionError(false)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
       const recorder = new MediaRecorder(stream)
       mediaRecorderRef.current = recorder
 

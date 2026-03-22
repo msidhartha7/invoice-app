@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import type { ChangeEvent } from 'react'
 import { Camera } from 'lucide-react'
 
@@ -19,7 +19,14 @@ export function CameraCapture({ onCapture, isLoading }: CameraCaptureProps) {
     onCapture(file)
   }
 
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview)
+    }
+  }, [preview])
+
   function handleRetake() {
+    if (preview) URL.revokeObjectURL(preview)
     setPreview(null)
     if (inputRef.current) inputRef.current.value = ''
     inputRef.current?.click()

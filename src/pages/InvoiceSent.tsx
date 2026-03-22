@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Home, Link as LinkIcon, Download } from 'lucide-react'
 import { AppLayout } from '../layouts/AppLayout'
@@ -16,8 +16,23 @@ export default function InvoiceSent() {
 
   const invoice = location.state?.invoice as Invoice | undefined
 
+  if (!invoice) return <Navigate to="/" replace />
+
   async function handleCopyLink() {
     if (!invoice?.payment_link) return
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Invoice for ${invoice.client_name}`,
+          url: invoice.payment_link,
+        })
+        return
+      } catch {
+        // User dismissed share sheet — fall through to clipboard copy
+      }
+    }
+
     try {
       await navigator.clipboard.writeText(invoice.payment_link)
       setCopied(true)

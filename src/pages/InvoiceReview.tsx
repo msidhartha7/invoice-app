@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -12,16 +12,16 @@ export default function InvoiceReview() {
   const location = useLocation()
   const { user } = useAuth()
 
-  const extracted = (
-    location.state?.extractedData ?? { client_name: '', items: [], total: 0 }
-  ) as ExtractedInvoiceData
+  const extracted = (location.state?.extractedData ?? null) as ExtractedInvoiceData | null
 
-  const [clientName, setClientName] = useState(extracted.client_name)
+  const [clientName, setClientName] = useState(extracted?.client_name ?? '')
   const [items, setItems] = useState<LineItem[]>(
-    extracted.items.map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
+    (extracted?.items ?? []).map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
   )
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+
+  if (!extracted) return <Navigate to="/invoice/new" replace />
 
   const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
 
@@ -50,9 +50,11 @@ export default function InvoiceReview() {
   }
 
   async function handleSave() {
-    if (!user || !clientName.trim() || items.length === 0) return
+    if (!user || !clientName.trim() || items.length === 0 || total <= 0) return
     setIsSaving(true)
     setError('')
+
+    let savedInvoice: Invoice | undefined
 
     try {
       const { data, error: insertError } = await supabase
@@ -69,10 +71,15 @@ export default function InvoiceReview() {
 
       if (insertError) throw insertError
 
-      const savedInvoice = data as Invoice
+      savedInvoice = data as Invoice
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const { data: sessionData } = await supabase.auth.getSession()
-      const session = sessionData.session
+      let { data: sessionData } = await supabase.auth.getSession()
+      let session = sessionData.session
+
+      if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
+        const { data: refreshData } = await supabase.auth.refreshSession()
+        session = refreshData.session
+      }
 
       let paymentLink: string
 
@@ -89,7 +96,14 @@ export default function InvoiceReview() {
             client_name: clientName.trim(),
           }),
         })
-        const linkData = (await res.json()) as { payment_link: string }
+        if (!res.ok) {
+          const errData = (await res.json()) as { error?: string }
+          throw new Error(errData.error ?? `Payment service error: ${res.status}`)
+        }
+        const linkData = (await res.json()) as { payment_link?: string }
+        if (!linkData.payment_link) {
+          throw new Error('No payment link returned from payment processor')
+        }
         paymentLink = linkData.payment_link
       } else {
         paymentLink = `https://pay.dodopayments.com/mock/${savedInvoice.id}`
@@ -109,30 +123,42 @@ export default function InvoiceReview() {
         },
       })
     } catch (err) {
+      if (savedInvoice?.id) {
+        await supabase.from('invoices').delete().eq('id', savedInvoice.id)
+      }
       setError((err as Error).message || 'Failed to save invoice')
       setIsSaving(false)
     }
   }
 
+  const isDisabled = isSaving || !clientName.trim() || items.length === 0 || total <= 0
+
   const bottomBar = (
-    <button
-      onClick={handleSave}
-      disabled={isSaving || !clientName.trim() || items.length === 0}
-      className="w-full h-[56px] bg-[#6C47FF] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
-    >
-      {isSaving ? (
-        <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-      ) : (
-        `Save & Send · $${total.toFixed(2)}`
+    <>
+      {!isSaving && (!clientName.trim() || items.length === 0 || total <= 0) && (
+        <p className="text-xs text-center text-[#AAA] mb-2">
+          Add a client name, at least one item, and a total above $0 to continue
+        </p>
       )}
-    </button>
+      <button
+        onClick={handleSave}
+        disabled={isDisabled}
+        className="w-full h-[56px] bg-[#6C47FF] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
+      >
+        {isSaving ? (
+          <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        ) : (
+          `Save & Send · $${total.toFixed(2)}`
+        )}
+      </button>
+    </>
   )
 
   return (
     <AppLayout bottomBar={bottomBar}>
       <div className="px-6 pt-12 pb-4">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/invoice/new')}
           className="mb-8 flex items-center gap-2 text-sm text-[#888] hover:text-[#1A1A1A] transition"
         >
           <ArrowLeft className="w-4 h-4" />
