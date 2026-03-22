@@ -1,49 +1,20 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, getRouteApi } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Plus, FileText, LogOut } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AppLayout } from '../layouts/AppLayout'
 import { InvoiceCard } from '../components/InvoiceCard'
-import { useAppStore } from '../store/appStore'
-import type { Invoice } from '../types'
 
-const CACHE_TTL_MS = 30_000 // 30 seconds
+const routeApi = getRouteApi('/authenticated/')
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user, profile, signOut } = useAuth()
-  const { dashboardInvoices, dashboardFetchedAt, setDashboardInvoices } = useAppStore()
-
-  const isCacheValid = dashboardFetchedAt != null && Date.now() - dashboardFetchedAt < CACHE_TTL_MS
-  const [invoices, setInvoices] = useState<Invoice[]>(isCacheValid ? dashboardInvoices : [])
-  const [isLoading, setIsLoading] = useState(!isCacheValid)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (!user) return
-    if (isCacheValid) return
-    supabase
-      .from('invoices')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data, error: fetchError }) => {
-        if (fetchError) throw fetchError
-        const fetched = (data as Invoice[]) ?? []
-        setInvoices(fetched)
-        setDashboardInvoices(fetched)
-        setIsLoading(false)
-      }, (err: Error) => {
-        setError(err.message)
-        setIsLoading(false)
-      })
-  }, [user])
+  const { profile, signOut } = useAuth()
+  const { invoices } = routeApi.useLoaderData()
 
   const bottomBar = (
     <button
-      onClick={() => navigate('/invoice/new')}
+      onClick={() => navigate({ to: '/invoice/new' })}
       className="w-full h-[56px] bg-[#6C47FF] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
     >
       <Plus className="w-5 h-5" />
@@ -72,23 +43,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 rounded-full border-2 border-[#6C47FF] border-t-transparent animate-spin" />
-          </div>
-        ) : error ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-20 text-center"
-          >
-            <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-red-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-[#1A1A1A] mb-1">Couldn't load invoices</h3>
-            <p className="text-sm text-[#888]">{error}</p>
-          </motion.div>
-        ) : invoices.length === 0 ? (
+        {invoices.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

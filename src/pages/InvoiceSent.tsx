@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Home, Link as LinkIcon, Download } from 'lucide-react'
 import { AppLayout } from '../layouts/AppLayout'
@@ -14,7 +14,7 @@ export default function InvoiceSent() {
   const [copied, setCopied] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
 
-  if (!invoice) return <Navigate to="/" replace />
+  if (!invoice) return <Navigate to="/" />
 
   async function handleCopyLink() {
     if (!invoice?.payment_link) return
@@ -61,7 +61,7 @@ export default function InvoiceSent() {
 
   const bottomBar = (
     <button
-      onClick={() => { clearInvoiceFlow(); navigate('/', { replace: true }) }}
+      onClick={() => { clearInvoiceFlow(); navigate({ to: '/', replace: true }) }}
       className="w-full h-[56px] bg-[#1A1A1A] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
     >
       <Home className="w-4 h-4" />

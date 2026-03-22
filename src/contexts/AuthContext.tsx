@@ -14,6 +14,22 @@ interface AuthContextValue {
   refreshProfile: () => Promise<void>
 }
 
+// Module-level auth state bridge — readable by TanStack Router's beforeLoad
+// without going through React context
+export let _authState: { user: User | null; profile: Profile | null } = {
+  user: null,
+  profile: null,
+}
+
+let _authReadyResolve: (() => void) | null = null
+const _authReadyPromise = new Promise<void>((resolve) => {
+  _authReadyResolve = resolve
+})
+
+export function waitForAuth(): Promise<void> {
+  return _authReadyPromise
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -28,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .single()
     setProfile(data as Profile | null)
+    return data as Profile | null
   }
 
   async function refreshProfile() {
@@ -40,13 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null)
         if (session?.user) {
           try {
-            await fetchProfile(session.user.id)
+            const fetchedProfile = await fetchProfile(session.user.id)
+            _authState = { user: session.user, profile: fetchedProfile }
           } finally {
             setIsLoading(false)
+            _authReadyResolve?.()
           }
         } else {
           setProfile(null)
+          _authState = { user: null, profile: null }
           setIsLoading(false)
+          _authReadyResolve?.()
         }
       },
     )

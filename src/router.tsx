@@ -1,0 +1,149 @@
+import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
+import { lazy, Suspense } from 'react'
+import { _authState, waitForAuth } from './contexts/AuthContext'
+import { supabase } from './lib/supabase'
+import type { Invoice } from './types'
+import Login from './pages/Login'
+import Paywall from './pages/Paywall'
+import Dashboard from './pages/Dashboard'
+import NewInvoice from './pages/NewInvoice'
+import InvoiceReview from './pages/InvoiceReview'
+import InvoiceSent from './pages/InvoiceSent'
+
+// Dev-only router devtools
+const TanStackRouterDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/router-devtools').then((m) => ({
+        default: m.TanStackRouterDevtools,
+      })),
+    )
+  : () => null
+
+const Spinner = () => (
+  <div className="min-h-[100dvh] flex items-center justify-center bg-[#FAFAFA]">
+    <div className="w-8 h-8 rounded-full border-2 border-[#6C47FF] border-t-transparent animate-spin" />
+  </div>
+)
+
+// Root route
+const rootRoute = createRootRoute({
+  component: () => (
+    <>
+      <Outlet />
+      <Suspense>
+        <TanStackRouterDevtools />
+      </Suspense>
+    </>
+  ),
+})
+
+// Public: /login
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: Login,
+})
+
+// Requires auth (no subscription check): /paywall
+const paywallRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/paywall',
+  beforeLoad: async () => {
+    await waitForAuth()
+    if (!_authState.user) {
+      throw redirect({ to: '/login' })
+    }
+  },
+  component: Paywall,
+})
+
+// Layout route: requires auth + subscription
+const authenticatedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'authenticated',
+  beforeLoad: async () => {
+    await waitForAuth()
+    if (!_authState.user) {
+      throw redirect({ to: '/login' })
+    }
+    if (!_authState.profile?.is_subscribed) {
+      throw redirect({ to: '/paywall' })
+    }
+  },
+  pendingComponent: Spinner,
+  component: () => <Outlet />,
+})
+
+// Dashboard: / (index)
+const dashboardRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/',
+  loader: async () => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('user_id', _authState.user!.id)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return { invoices: (data as Invoice[]) ?? [] }
+  },
+  staleTime: 30_000,
+  pendingComponent: Spinner,
+  errorComponent: ({ error }) => (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-[#FAFAFA] px-6">
+      <div className="text-center">
+        <p className="text-lg font-semibold text-[#1A1A1A] mb-1">Couldn't load invoices</p>
+        <p className="text-sm text-[#888]">{(error as Error).message}</p>
+      </div>
+    </div>
+  ),
+  component: Dashboard,
+})
+
+// Invoice routes
+const newInvoiceRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/invoice/new',
+  component: NewInvoice,
+})
+
+const invoiceReviewRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/invoice/review',
+  component: InvoiceReview,
+})
+
+const invoiceSentRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/invoice/sent',
+  component: InvoiceSent,
+})
+
+// Catch-all: redirect to /
+const catchAllRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '*',
+  beforeLoad: () => {
+    throw redirect({ to: '/' })
+  },
+})
+
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  paywallRoute,
+  authenticatedRoute.addChildren([
+    dashboardRoute,
+    newInvoiceRoute,
+    invoiceReviewRoute,
+    invoiceSentRoute,
+  ]),
+  catchAllRoute,
+])
+
+export const router = createRouter({ routeTree })
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}

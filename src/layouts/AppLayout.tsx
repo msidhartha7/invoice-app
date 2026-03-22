@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useLocation } from 'react-router-dom'
+import { useRouterState } from '@tanstack/react-router'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -8,13 +8,13 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, bottomBar }: AppLayoutProps) {
-  const location = useLocation()
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   return (
     <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col max-w-md mx-auto relative">
       <AnimatePresence mode="wait">
         <motion.main
-          key={location.pathname}
+          key={pathname}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -14 }}

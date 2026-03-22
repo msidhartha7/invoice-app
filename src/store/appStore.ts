@@ -13,17 +13,12 @@ interface AppState {
   currentInvoice: Invoice | null
   draftForm: DraftForm | null
 
-  // Dashboard cache
-  dashboardInvoices: Invoice[]
-  dashboardFetchedAt: number | null
-
   // Actions
   setExtractedData: (data: ExtractedInvoiceData | null) => void
   setCurrentInvoice: (invoice: Invoice | null) => void
   setDraftForm: (form: DraftForm) => void
   initDraftFromExtracted: () => void
   clearInvoiceFlow: () => void
-  setDashboardInvoices: (invoices: Invoice[]) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -32,8 +27,6 @@ export const useAppStore = create<AppState>()(
       extractedData: null,
       currentInvoice: null,
       draftForm: null,
-      dashboardInvoices: [],
-      dashboardFetchedAt: null,
 
       setExtractedData: (data) => set({ extractedData: data }),
       setCurrentInvoice: (invoice) => set({ currentInvoice: invoice }),
@@ -53,8 +46,6 @@ export const useAppStore = create<AppState>()(
         }),
       clearInvoiceFlow: () =>
         set({ extractedData: null, currentInvoice: null, draftForm: null }),
-      setDashboardInvoices: (invoices) =>
-        set({ dashboardInvoices: invoices, dashboardFetchedAt: Date.now() }),
     }),
     {
       name: 'niche-invoice-app',
@@ -63,8 +54,6 @@ export const useAppStore = create<AppState>()(
         extractedData: state.extractedData,
         currentInvoice: state.currentInvoice,
         draftForm: state.draftForm,
-        dashboardInvoices: state.dashboardInvoices,
-        dashboardFetchedAt: state.dashboardFetchedAt,
       }),
     },
   ),

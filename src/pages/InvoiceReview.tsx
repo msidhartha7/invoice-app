@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, useRouter, Navigate } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { supabase, getValidSession } from '../lib/supabase'
@@ -10,6 +10,7 @@ import type { Invoice, LineItem } from '../types'
 
 export default function InvoiceReview() {
   const navigate = useNavigate()
+  const router = useRouter()
   const { user } = useAuth()
   const {
     extractedData,
@@ -29,7 +30,7 @@ export default function InvoiceReview() {
     initDraftFromExtracted()
   }, [initDraftFromExtracted])
 
-  if (!extractedData && !draftForm) return <Navigate to="/invoice/new" replace />
+  if (!extractedData && !draftForm) return <Navigate to="/invoice/new" />
 
   const clientName = draftForm?.clientName ?? ''
   const items = draftForm?.items ?? []
@@ -143,7 +144,7 @@ export default function InvoiceReview() {
       clearInvoiceFlow()
       // Restore currentInvoice since clearInvoiceFlow clears it
       useAppStore.getState().setCurrentInvoice(sentInvoice)
-      navigate('/invoice/sent')
+      navigate({ to: '/invoice/sent' })
     } catch (err) {
       const message = (err as Error).message || 'Failed to save invoice'
       if (savedInvoiceRef.current) {
@@ -170,7 +171,7 @@ export default function InvoiceReview() {
       setCurrentInvoice(sentInvoice)
       clearInvoiceFlow()
       useAppStore.getState().setCurrentInvoice(sentInvoice)
-      navigate('/invoice/sent')
+      navigate({ to: '/invoice/sent' })
     } catch (err) {
       setError(
         `Invoice saved, but payment link creation failed. ${(err as Error).message || 'Please try again.'}`,
@@ -208,7 +209,7 @@ export default function InvoiceReview() {
     <AppLayout bottomBar={bottomBar}>
       <div className="px-6 pt-12 pb-4">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => router.history.back()}
           className="mb-8 flex items-center gap-2 text-sm text-[#888] hover:text-[#1A1A1A] transition"
         >
           <ArrowLeft className="w-4 h-4" />

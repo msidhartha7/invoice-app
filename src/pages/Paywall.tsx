@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Check, Zap, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -33,7 +33,7 @@ export default function Paywall() {
           .eq('id', user.id)
         if (updateError) throw updateError
         await refreshProfile()
-        navigate('/')
+        navigate({ to: '/' })
       } else {
         createCheckoutSession(user.id, user.email ?? '')
       }
