@@ -208,7 +208,7 @@ export default function InvoiceReview() {
     <AppLayout bottomBar={bottomBar}>
       <div className="px-6 pt-12 pb-4">
         <button
-          onClick={() => navigate('/invoice/new')}
+          onClick={() => navigate(-1)}
           className="mb-8 flex items-center gap-2 text-sm text-[#888] hover:text-[#1A1A1A] transition"
         >
           <ArrowLeft className="w-4 h-4" />

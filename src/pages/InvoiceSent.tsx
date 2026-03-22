@@ -61,7 +61,7 @@ export default function InvoiceSent() {
 
   const bottomBar = (
     <button
-      onClick={() => { clearInvoiceFlow(); navigate('/') }}
+      onClick={() => { clearInvoiceFlow(); navigate('/', { replace: true }) }}
       className="w-full h-[56px] bg-[#1A1A1A] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
     >
       <Home className="w-4 h-4" />
