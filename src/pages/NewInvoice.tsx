@@ -6,19 +6,23 @@ import { CameraCapture } from '../components/CameraCapture'
 import { VoiceRecorder } from '../components/VoiceRecorder'
 import { processIntake } from '../lib/api'
 import { AppLayout } from '../layouts/AppLayout'
+import { useAppStore } from '../store/appStore'
 import type { ExtractedInvoiceData } from '../types'
 
 export default function NewInvoice() {
   const navigate = useNavigate()
+  const { setExtractedData, clearInvoiceFlow } = useAppStore()
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
 
   async function handleProcess(file: File | Blob, type: 'image' | 'audio') {
     setIsProcessing(true)
     setError('')
+    clearInvoiceFlow()
     try {
       const data: ExtractedInvoiceData = await processIntake(file, type)
-      navigate('/invoice/review', { state: { extractedData: data } })
+      setExtractedData(data)
+      navigate('/invoice/review')
     } catch (err) {
       setError((err as Error).message || 'Processing failed. Please try again.')
       setIsProcessing(false)

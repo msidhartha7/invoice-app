@@ -6,17 +6,24 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AppLayout } from '../layouts/AppLayout'
 import { InvoiceCard } from '../components/InvoiceCard'
+import { useAppStore } from '../store/appStore'
 import type { Invoice } from '../types'
+
+const CACHE_TTL_MS = 30_000 // 30 seconds
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuth()
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { dashboardInvoices, dashboardFetchedAt, setDashboardInvoices } = useAppStore()
+
+  const isCacheValid = dashboardFetchedAt != null && Date.now() - dashboardFetchedAt < CACHE_TTL_MS
+  const [invoices, setInvoices] = useState<Invoice[]>(isCacheValid ? dashboardInvoices : [])
+  const [isLoading, setIsLoading] = useState(!isCacheValid)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!user) return
+    if (isCacheValid) return
     supabase
       .from('invoices')
       .select('*')
@@ -24,7 +31,9 @@ export default function Dashboard() {
       .order('created_at', { ascending: false })
       .then(({ data, error: fetchError }) => {
         if (fetchError) throw fetchError
-        setInvoices((data as Invoice[]) ?? [])
+        const fetched = (data as Invoice[]) ?? []
+        setInvoices(fetched)
+        setDashboardInvoices(fetched)
         setIsLoading(false)
       }, (err: Error) => {
         setError(err.message)

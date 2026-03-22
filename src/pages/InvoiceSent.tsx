@@ -1,20 +1,18 @@
 import { useState } from 'react'
-import { useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Home, Link as LinkIcon, Download } from 'lucide-react'
 import { AppLayout } from '../layouts/AppLayout'
 import { downloadInvoicePDF } from '../lib/pdf'
 import { useAuth } from '../contexts/AuthContext'
-import type { Invoice } from '../types'
+import { useAppStore } from '../store/appStore'
 
 export default function InvoiceSent() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { profile } = useAuth()
+  const { currentInvoice: invoice, clearInvoiceFlow } = useAppStore()
   const [copied, setCopied] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
-
-  const invoice = location.state?.invoice as Invoice | undefined
 
   if (!invoice) return <Navigate to="/" replace />
 
@@ -63,7 +61,7 @@ export default function InvoiceSent() {
 
   const bottomBar = (
     <button
-      onClick={() => navigate('/')}
+      onClick={() => { clearInvoiceFlow(); navigate('/') }}
       className="w-full h-[56px] bg-[#1A1A1A] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
     >
       <Home className="w-4 h-4" />

@@ -1,27 +1,26 @@
 import { useState } from 'react'
-import { useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AppLayout } from '../layouts/AppLayout'
-import type { Invoice, LineItem, ExtractedInvoiceData } from '../types'
+import { useAppStore } from '../store/appStore'
+import type { Invoice, LineItem } from '../types'
 
 export default function InvoiceReview() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { user } = useAuth()
+  const { extractedData, setCurrentInvoice } = useAppStore()
 
-  const extracted = (location.state?.extractedData ?? null) as ExtractedInvoiceData | null
-
-  const [clientName, setClientName] = useState(extracted?.client_name ?? '')
+  const [clientName, setClientName] = useState(extractedData?.client_name ?? '')
   const [items, setItems] = useState<LineItem[]>(
-    (extracted?.items ?? []).map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
+    (extractedData?.items ?? []).map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
   )
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
-  if (!extracted) return <Navigate to="/invoice/new" replace />
+  if (!extractedData) return <Navigate to="/invoice/new" replace />
 
   const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
 
@@ -113,15 +112,13 @@ export default function InvoiceReview() {
           .eq('id', savedInvoice.id)
       }
 
-      navigate('/invoice/sent', {
-        state: {
-          invoice: {
-            ...savedInvoice,
-            payment_link: paymentLink,
-            status: 'sent',
-          } satisfies Invoice,
-        },
-      })
+      const sentInvoice: Invoice = {
+        ...savedInvoice,
+        payment_link: paymentLink,
+        status: 'sent',
+      }
+      setCurrentInvoice(sentInvoice)
+      navigate('/invoice/sent')
     } catch (err) {
       if (savedInvoice?.id) {
         await supabase.from('invoices').delete().eq('id', savedInvoice.id)
