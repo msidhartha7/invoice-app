@@ -25,9 +25,11 @@ export default function Dashboard() {
       .then(({ data, error: fetchError }) => {
         if (fetchError) throw fetchError
         setInvoices((data as Invoice[]) ?? [])
+        setIsLoading(false)
+      }, (err: Error) => {
+        setError(err.message)
+        setIsLoading(false)
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setIsLoading(false))
   }, [user])
 
   const bottomBar = (
