@@ -23,8 +23,8 @@ export default function Dashboard() {
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         setInvoices((data as Invoice[]) ?? [])
-        setIsLoading(false)
       })
+      .finally(() => setIsLoading(false))
   }, [user])
 
   const bottomBar = (
