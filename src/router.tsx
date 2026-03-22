@@ -134,7 +134,6 @@ const invoiceDetailRoute = createRoute({
     return { invoice: data as Invoice }
   },
   staleTime: 30_000,
-  pendingComponent: Spinner,
   errorComponent: ({ error }) => (
     <div className="min-h-[100dvh] flex items-center justify-center bg-[#FAFAFA] px-6">
       <div className="text-center">
