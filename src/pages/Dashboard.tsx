@@ -24,7 +24,10 @@ export default function Dashboard() {
       .then(({ data }) => {
         setInvoices((data as Invoice[]) ?? [])
       })
-      .finally(() => setIsLoading(false))
+      .then(
+        () => setIsLoading(false),
+        () => setIsLoading(false),
+      )
   }, [user])
 
   const bottomBar = (
