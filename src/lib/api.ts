@@ -33,8 +33,14 @@ export async function processIntake(
   file: File | Blob,
   type: 'image' | 'audio',
 ): Promise<ExtractedInvoiceData> {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const session = sessionData.session
+  let { data: sessionData } = await supabase.auth.getSession()
+  let session = sessionData.session
+
+  // Refresh the token if it's expired or about to expire (within 60s)
+  if (session?.expires_at && Date.now() / 1000 >= session.expires_at - 60) {
+    const { data: refreshData } = await supabase.auth.refreshSession()
+    session = refreshData.session
+  }
 
   if (!session) throw new Error('Not authenticated')
 
