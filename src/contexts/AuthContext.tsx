@@ -9,6 +9,7 @@ interface AuthContextValue {
   profile: Profile | null
   isLoading: boolean
   signIn: (email: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -34,24 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setIsLoading(false))
-      } else {
-        setIsLoading(false)
-      }
-    }).catch(() => setIsLoading(false))
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          try {
+            await fetchProfile(session.user.id)
+          } finally {
+            setIsLoading(false)
+          }
         } else {
           setProfile(null)
+          setIsLoading(false)
         }
-        setIsLoading(false)
       },
     )
 
@@ -66,12 +62,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
+  async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
+    if (error) throw error
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext value={{ user, profile, isLoading, signIn, signOut, refreshProfile }}>
+    <AuthContext value={{ user, profile, isLoading, signIn, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext>
   )

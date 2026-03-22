@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, Zap, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -15,6 +16,7 @@ const FEATURES = [
 
 export default function Paywall() {
   const { user, signOut, refreshProfile } = useAuth()
+  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const isDev = !import.meta.env.VITE_DODO_CHECKOUT_URL
@@ -31,6 +33,7 @@ export default function Paywall() {
           .eq('id', user.id)
         if (updateError) throw updateError
         await refreshProfile()
+        navigate('/')
       } else {
         createCheckoutSession(user.id, user.email ?? '')
       }
