@@ -53,7 +53,7 @@ export default function InvoiceSent() {
     if (!invoice) return
     setPdfLoading(true)
     try {
-      await downloadInvoicePDF(invoice, profile?.business_name ?? 'My Business')
+      await downloadInvoicePDF(invoice, profile ?? null)
     } finally {
       setPdfLoading(false)
     }

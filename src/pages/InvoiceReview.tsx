@@ -208,7 +208,7 @@ export default function InvoiceReview() {
         .eq('id', editingInvoiceId)
       if (deleteError) throw deleteError
       clearInvoiceFlow()
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/' })
     } catch (err) {
       setError((err as Error).message || 'Failed to delete invoice')
       setIsDeleting(false)
