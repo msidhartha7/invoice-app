@@ -48,7 +48,7 @@ export const useAppStore = create<AppState>()(
                 ...item,
                 id: item.id ?? crypto.randomUUID(),
               })),
-              deliveryFee: 0,
+              deliveryFee: state.extractedData.delivery_fee ?? 0,
             },
           }
         }),

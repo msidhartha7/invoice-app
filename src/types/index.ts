@@ -44,5 +44,6 @@ export interface ExtractedInvoiceData {
   client_name: string
   project_name?: string
   items: LineItem[]
+  delivery_fee?: number
   total: number
 }
