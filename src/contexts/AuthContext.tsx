@@ -4,6 +4,9 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../types'
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+
 interface AuthContextValue {
   user: User | null
   profile: Profile | null
@@ -37,18 +40,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  async function fetchProfile(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setProfile(data as Profile | null)
-    return data as Profile | null
+  // Raw fetch bypasses supabase.from(), which internally calls auth.getSession()
+  // and deadlocks when invoked inside onAuthStateChange (lock contention).
+  async function fetchProfile(userId: string, accessToken: string) {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+      {
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      },
+    )
+    if (!res.ok) {
+      console.error('[AuthContext] fetchProfile HTTP error', res.status)
+      return null
+    }
+    const rows = (await res.json()) as Profile[]
+    const data = rows[0] ?? null
+    setProfile(data)
+    return data
   }
 
   async function refreshProfile() {
-    if (user) await fetchProfile(user.id)
+    if (!user) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) await fetchProfile(user.id, session.access_token)
   }
 
   useEffect(() => {
@@ -59,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           try {
             console.log('[AuthContext] onAuthStateChange: fetching profile for user=', session.user.id)
-            const fetchedProfile = await fetchProfile(session.user.id)
+            const fetchedProfile = await fetchProfile(session.user.id, session.access_token)
             console.log('[AuthContext] onAuthStateChange: profile result, is_subscribed=', fetchedProfile?.is_subscribed ?? false)
             _authState = { user: session.user, profile: fetchedProfile }
           } catch (profileErr) {
