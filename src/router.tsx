@@ -10,6 +10,7 @@ import NewInvoice from './pages/NewInvoice'
 import InvoiceReview from './pages/InvoiceReview'
 import InvoiceSent from './pages/InvoiceSent'
 import InvoiceDetail from './pages/InvoiceDetail'
+import BusinessProfile from './pages/BusinessProfile'
 
 // Dev-only router devtools
 const TanStackRouterDevtools = import.meta.env.DEV
@@ -154,6 +155,12 @@ const invoiceDetailRoute = createRoute({
   component: InvoiceDetail,
 })
 
+const businessProfileRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/settings',
+  component: BusinessProfile,
+})
+
 // Catch-all: redirect to /
 const catchAllRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -172,6 +179,7 @@ const routeTree = rootRoute.addChildren([
     invoiceReviewRoute,
     invoiceSentRoute,
     invoiceDetailRoute,
+    businessProfileRoute,
   ]),
   catchAllRoute,
 ])

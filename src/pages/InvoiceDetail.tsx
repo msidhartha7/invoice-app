@@ -72,7 +72,7 @@ export default function InvoiceDetail() {
   async function handleDownloadPDF() {
     setPdfLoading(true)
     try {
-      await downloadInvoicePDF(invoice, profile?.business_name ?? 'My Business')
+      await downloadInvoicePDF(invoice, profile ?? null)
     } finally {
       setPdfLoading(false)
     }

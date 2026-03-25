@@ -1,69 +1,95 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-async function verifyHmacSha256(
+// Svix signs: msgId + "." + msgTimestamp + "." + rawBody
+// svix-signature header is "v1,<base64>" (may be comma-separated list)
+async function verifySvixSignature(
   secret: string,
-  payload: string,
-  signature: string,
+  msgId: string,
+  timestamp: string,
+  rawBody: string,
+  signatureHeader: string,
 ): Promise<boolean> {
+  const toSign = `${msgId}.${timestamp}.${rawBody}`
+  const secretBytes = Uint8Array.from(atob(secret.replace(/^whsec_/, '')), (c) => c.charCodeAt(0))
   const key = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(secret),
+    secretBytes,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['verify'],
+    ['sign'],
   )
-  const sigBytes = Uint8Array.from(
-    signature.match(/.{2}/g)?.map((b) => parseInt(b, 16)) ?? [],
-  )
-  return crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(payload))
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(toSign))
+  const computed = btoa(String.fromCharCode(...new Uint8Array(sig)))
+  return signatureHeader.split(' ').some((s) => s.replace(/^v1,/, '') === computed)
 }
 
 serve(async (req) => {
   try {
     const webhookSecret = Deno.env.get('DODO_WEBHOOK_SECRET')
-    const signature = req.headers.get('dodo-signature')
+    const msgId = req.headers.get('svix-id')
+    const timestamp = req.headers.get('svix-timestamp')
+    const signatureHeader = req.headers.get('svix-signature')
     const rawBody = await req.text()
 
     if (webhookSecret) {
-      if (!signature) {
+      if (!msgId || !timestamp || !signatureHeader) {
         return new Response('Unauthorized', { status: 401 })
       }
-      const valid = await verifyHmacSha256(webhookSecret, rawBody, signature)
+      const valid = await verifySvixSignature(webhookSecret, msgId, timestamp, rawBody, signatureHeader)
       if (!valid) {
         return new Response('Invalid signature', { status: 401 })
       }
     }
 
     const payload = JSON.parse(rawBody) as {
-      event_type: string
-      data: { customer_id?: string; metadata?: { invoice_id?: string } }
+      type: string
+      data: {
+        customer?: { customer_id?: string; email?: string }
+        metadata?: { invoice_id?: string }
+      }
     }
-    const { event_type, data } = payload
+    const { type, data } = payload
+    const customerId = data.customer?.customer_id
+    const customerEmail = data.customer?.email
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    switch (event_type) {
-      case 'subscription.activated':
+    switch (type) {
+      case 'subscription.active': {
+        // Look up user by email, then save dodo_customer_id and activate
+        if (customerEmail) {
+          const { data: authUser } = await supabase.auth.admin.listUsers()
+          const match = authUser?.users?.find((u) => u.email === customerEmail)
+          if (match) {
+            await supabase
+              .from('profiles')
+              .update({ is_subscribed: true, dodo_customer_id: customerId })
+              .eq('id', match.id)
+          }
+        }
+        break
+      }
+
       case 'subscription.renewed':
-        if (data.customer_id) {
+        if (customerId) {
           await supabase
             .from('profiles')
             .update({ is_subscribed: true })
-            .eq('dodo_customer_id', data.customer_id)
+            .eq('dodo_customer_id', customerId)
         }
         break
 
       case 'subscription.cancelled':
       case 'subscription.failed':
-        if (data.customer_id) {
+        if (customerId) {
           await supabase
             .from('profiles')
             .update({ is_subscribed: false })
-            .eq('dodo_customer_id', data.customer_id)
+            .eq('dodo_customer_id', customerId)
         }
         break
 

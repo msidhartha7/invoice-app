@@ -1,11 +1,22 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
-import type { Invoice } from '../types'
+import type { Invoice, Profile } from '../types'
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', AUD: 'A$',
+  INR: '₹', JPY: '¥', CHF: 'CHF ', SGD: 'S$', HKD: 'HK$',
+  NZD: 'NZ$', MXN: 'MX$', BRL: 'R$', ZAR: 'R', AED: 'AED ',
+  SEK: 'kr', NOK: 'kr', DKK: 'kr', KRW: '₩', THB: '฿',
+}
+
+function sym(currency: string) {
+  return CURRENCY_SYMBOLS[currency] ?? `${currency} `
+}
 
 const s = StyleSheet.create({
   page: { padding: 48, backgroundColor: '#FFFFFF', fontFamily: 'Helvetica' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
-  brandName: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
-  brandDate: { fontSize: 10, color: '#888888', marginTop: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
+  brandName: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
+  brandMeta: { fontSize: 9, color: '#888888', marginTop: 3, lineHeight: 1.5 },
   badge: {
     backgroundColor: '#6C47FF',
     paddingHorizontal: 12,
@@ -59,6 +70,13 @@ const s = StyleSheet.create({
   },
   totalLabel: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
   totalValue: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#6C47FF' },
+  taxRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  taxLabel: { fontSize: 9, color: '#888888' },
+  taxValue: { fontSize: 9, color: '#888888' },
   payBlock: {
     marginTop: 36,
     backgroundColor: '#F5F3FF',
@@ -87,26 +105,53 @@ const s = StyleSheet.create({
 
 interface InvoicePDFProps {
   invoice: Invoice
-  businessName: string
+  profile: Profile | null
 }
 
-export function InvoicePDF({ invoice, businessName }: InvoicePDFProps) {
+export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
   const date = new Date(invoice.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
 
+  const currency = profile?.currency ?? 'USD'
+  const currencySymbol = sym(currency)
+  const businessName = profile?.business_name ?? 'My Business'
+
+  // Build address string
+  const addressParts = [
+    profile?.address_line1,
+    profile?.address_line2,
+    [profile?.city, profile?.state, profile?.zip].filter(Boolean).join(', '),
+    profile?.country,
+  ].filter(Boolean)
+
+  // Build contact string
+  const contactParts = [
+    profile?.phone,
+    profile?.business_email,
+    profile?.website,
+  ].filter(Boolean)
+
   return (
     <Document>
       <Page size="A4" style={s.page}>
         <View style={s.header}>
-          <View>
+          <View style={{ flex: 1, marginRight: 16 }}>
             <Text style={s.brandName}>{businessName}</Text>
-            <Text style={s.brandDate}>{date}</Text>
+            {addressParts.map((line, i) => (
+              <Text key={i} style={s.brandMeta}>{line}</Text>
+            ))}
+            {contactParts.map((line, i) => (
+              <Text key={i} style={s.brandMeta}>{line}</Text>
+            ))}
           </View>
-          <View style={s.badge}>
-            <Text style={s.badgeText}>INVOICE</Text>
+          <View>
+            <View style={s.badge}>
+              <Text style={s.badgeText}>INVOICE</Text>
+            </View>
+            <Text style={[s.brandMeta, { marginTop: 8, textAlign: 'right' }]}>{date}</Text>
           </View>
         </View>
 
@@ -126,15 +171,22 @@ export function InvoicePDF({ invoice, businessName }: InvoicePDFProps) {
           <View key={item.id} style={s.row}>
             <Text style={[s.cell, s.colDesc]}>{item.description}</Text>
             <Text style={[s.cell, s.colQty]}>{item.quantity}</Text>
-            <Text style={[s.cell, s.colRate]}>${item.rate.toFixed(2)}</Text>
-            <Text style={[s.cell, s.colAmt]}>${item.amount.toFixed(2)}</Text>
+            <Text style={[s.cell, s.colRate]}>{currencySymbol}{item.rate.toFixed(2)}</Text>
+            <Text style={[s.cell, s.colAmt]}>{currencySymbol}{item.amount.toFixed(2)}</Text>
           </View>
         ))}
 
         <View style={s.totalRow}>
           <Text style={s.totalLabel}>TOTAL DUE</Text>
-          <Text style={s.totalValue}>${invoice.total_amount.toFixed(2)}</Text>
+          <Text style={s.totalValue}>{currencySymbol}{invoice.total_amount.toFixed(2)}</Text>
         </View>
+
+        {profile?.tax_id ? (
+          <View style={s.taxRow}>
+            <Text style={s.taxLabel}>Tax ID</Text>
+            <Text style={s.taxValue}>{profile.tax_id}</Text>
+          </View>
+        ) : null}
 
         {invoice.payment_link ? (
           <View style={s.payBlock}>

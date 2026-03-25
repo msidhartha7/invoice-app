@@ -1,6 +1,6 @@
 import { useNavigate, getRouteApi } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
-import { Plus, FileText, LogOut } from 'lucide-react'
+import { Plus, FileText, LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { AppLayout } from '../layouts/AppLayout'
 import { InvoiceCard } from '../components/InvoiceCard'
@@ -34,13 +34,22 @@ export default function Dashboard() {
               {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <button
-            onClick={signOut}
-            aria-label="Sign out"
-            className="w-10 h-10 flex items-center justify-center rounded-2xl bg-[#F0F0F0] text-[#888] active:scale-95 transition"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate({ to: '/settings' })}
+              aria-label="Business profile"
+              className="w-10 h-10 flex items-center justify-center rounded-2xl bg-[#F0F0F0] text-[#888] active:scale-95 transition"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={signOut}
+              aria-label="Sign out"
+              className="w-10 h-10 flex items-center justify-center rounded-2xl bg-[#F0F0F0] text-[#888] active:scale-95 transition"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {invoices.length === 0 ? (

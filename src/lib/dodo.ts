@@ -6,7 +6,9 @@ export function createCheckoutSession(userId: string, email: string): void {
 
   const url = new URL(DODO_CHECKOUT_URL)
   url.searchParams.set('productId', DODO_PLAN_ID)
-  url.searchParams.set('customer_email', email)
+  url.searchParams.set('email', email)
+  url.searchParams.set('disableEmail', 'true')
   url.searchParams.set('metadata[user_id]', userId)
+  url.searchParams.set('redirectUrl', 'https://invoice-app.store')
   window.location.href = url.toString()
 }

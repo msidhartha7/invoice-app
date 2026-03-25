@@ -3,13 +3,13 @@ import type { DocumentProps } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import type { ReactElement } from 'react'
 import { InvoicePDF } from '../components/InvoicePDF'
-import type { Invoice } from '../types'
+import type { Invoice, Profile } from '../types'
 
 export async function downloadInvoicePDF(
   invoice: Invoice,
-  businessName: string,
+  profile: Profile | null,
 ): Promise<void> {
-  const element = createElement(InvoicePDF, { invoice, businessName }) as ReactElement<DocumentProps>
+  const element = createElement(InvoicePDF, { invoice, profile }) as ReactElement<DocumentProps>
   const blob = await pdf(element).toBlob()
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')

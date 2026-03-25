@@ -23,6 +23,8 @@ export default function InvoiceReview() {
   } = useAppStore()
 
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [error, setError] = useState('')
   const [touched, setTouched] = useState<Set<string>>(new Set())
   const savedInvoiceRef = useRef<Invoice | null>(null)
@@ -83,10 +85,12 @@ export default function InvoiceReview() {
 
     if (supabaseUrl && session) {
       console.log('[InvoiceReview] createPaymentLink: calling edge function...')
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
       const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
+          apikey: supabaseAnonKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -193,6 +197,25 @@ export default function InvoiceReview() {
     }
   }
 
+  async function handleDelete() {
+    if (!editingInvoiceId) return
+    setIsDeleting(true)
+    setError('')
+    try {
+      const { error: deleteError } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', editingInvoiceId)
+      if (deleteError) throw deleteError
+      clearInvoiceFlow()
+      navigate({ to: '/dashboard' })
+    } catch (err) {
+      setError((err as Error).message || 'Failed to delete invoice')
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
   async function handleRetryPaymentLink() {
     if (!savedInvoiceRef.current) return
     setIsSaving(true)
@@ -255,9 +278,20 @@ export default function InvoiceReview() {
           Back
         </button>
 
-        <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">
-          {editingInvoiceId ? 'Edit Invoice' : 'Review Invoice'}
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-[#1A1A1A]">
+            {editingInvoiceId ? 'Edit Invoice' : 'Review Invoice'}
+          </h1>
+          {editingInvoiceId && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              aria-label="Delete invoice"
+              className="text-[#CCC] hover:text-red-400 active:scale-95 transition p-1"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
         <div className="mb-6">
           <label className="text-xs font-semibold text-[#888] uppercase tracking-wider block mb-2">
@@ -373,6 +407,38 @@ export default function InvoiceReview() {
           </div>
         )}
       </div>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowDeleteConfirm(false)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-t-3xl p-6 pb-10">
+            <h2 className="text-lg font-bold text-[#1A1A1A] mb-2">Delete Invoice?</h2>
+            <p className="text-sm text-[#888] mb-6">
+              This will permanently delete the invoice. This action cannot be undone.
+            </p>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="w-full h-[52px] bg-red-500 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition mb-3"
+            >
+              {isDeleting ? (
+                <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              ) : (
+                'Delete Invoice'
+              )}
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isDeleting}
+              className="w-full h-[52px] bg-[#F4F4F4] text-[#1A1A1A] font-semibold rounded-2xl active:scale-95 transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

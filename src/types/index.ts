@@ -4,6 +4,17 @@ export interface Profile {
   business_name: string | null
   dodo_customer_id: string | null
   created_at: string
+  address_line1: string | null
+  address_line2: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  country: string | null
+  phone: string | null
+  business_email: string | null
+  tax_id: string | null
+  currency: string
+  website: string | null
 }
 
 export interface LineItem {
