@@ -38,6 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   async function fetchProfile(userId: string) {
+    
+    console.log(supabase);
+    console.log(await supabase.auth.getSession()) // debug log to check session state
+
     const { data, error, status } = await supabase
       .from('profiles')
       .select('*')
