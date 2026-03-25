@@ -39,14 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchProfile(userId: string) {
     
-    console.log(supabase);
+    console.log(supabase);  
     console.log(await supabase.auth.getSession()) // debug log to check session state
 
     const { data, error, status } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .maybeSingle()  // handles missing row cleanly
+      // .
+      // .maybeSingle()  // handles missing row cleanly
 
     if (error) {
       console.error('[AuthContext] fetchProfile error', { userId, status, error })
