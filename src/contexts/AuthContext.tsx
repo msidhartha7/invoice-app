@@ -38,13 +38,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
+    const { data, error, status } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
-    setProfile(data as Profile | null)
-    return data as Profile | null
+      .maybeSingle()  // handles missing row cleanly
+
+    if (error) {
+      console.error('[AuthContext] fetchProfile error', { userId, status, error })
+      // for 404 / 406 we may want to continue with null profile, not crash the whole app
+      if (status === 406 || status === 404) {
+        setProfile(null)
+        return null
+      }
+      throw error // let caller catch unhandled cases
+    }
+
+    if (!data) {
+      setProfile(null)
+      return null
+    }
+
+    setProfile(data as Profile)
+    return data as Profile
   }
 
   async function refreshProfile() {
@@ -59,13 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           try {
             console.log('[AuthContext] onAuthStateChange: fetching profile for user=', session.user.id)
-            const timeout = new Promise<null>((resolve) =>
-              setTimeout(() => {
-                console.warn('[AuthContext] onAuthStateChange: profile fetch timed out after 5s')
-                resolve(null)
-              }, 5000),
-            )
-            const fetchedProfile = await Promise.race([fetchProfile(session.user.id), timeout])
+            const fetchedProfile = await fetchProfile(session.user.id)
             console.log('[AuthContext] onAuthStateChange: profile result, is_subscribed=', fetchedProfile?.is_subscribed ?? false)
             _authState = { user: session.user, profile: fetchedProfile }
           } catch (profileErr) {
@@ -73,15 +83,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             _authState = { user: session.user, profile: null }
           } finally {
             setIsLoading(false)
-            console.log('[AuthContext] onAuthStateChange: resolving _authReadyPromise')
-            _authReadyResolve?.()
+            // Only resolve on INITIAL_SESSION — this is the first stable event after
+            // Supabase finishes initialization. SIGNED_IN can fire earlier (e.g. OAuth
+            // callback) while a DB trigger is still writing the profile row, causing
+            // fetchProfile to hang and return stale data.
+            if (event === 'INITIAL_SESSION') {
+              console.log('[AuthContext] onAuthStateChange: resolving _authReadyPromise (INITIAL_SESSION)')
+              _authReadyResolve?.()
+            }
           }
         } else {
           setProfile(null)
           _authState = { user: null, profile: null }
           setIsLoading(false)
-          console.log('[AuthContext] onAuthStateChange: no session, resolving _authReadyPromise')
-          _authReadyResolve?.()
+          if (event === 'INITIAL_SESSION') {
+            console.log('[AuthContext] onAuthStateChange: no session, resolving _authReadyPromise (INITIAL_SESSION)')
+            _authReadyResolve?.()
+          }
         }
       },
     )
