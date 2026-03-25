@@ -53,20 +53,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log('[AuthContext] onAuthStateChange: event=', event, 'user=', session?.user?.id ?? 'null')
         setUser(session?.user ?? null)
         if (session?.user) {
           try {
+            console.log('[AuthContext] onAuthStateChange: fetching profile for user=', session.user.id)
             const fetchedProfile = await fetchProfile(session.user.id)
+            console.log('[AuthContext] onAuthStateChange: profile fetched, is_subscribed=', fetchedProfile?.is_subscribed ?? false)
             _authState = { user: session.user, profile: fetchedProfile }
           } finally {
             setIsLoading(false)
+            console.log('[AuthContext] onAuthStateChange: resolving _authReadyPromise')
             _authReadyResolve?.()
           }
         } else {
           setProfile(null)
           _authState = { user: null, profile: null }
           setIsLoading(false)
+          console.log('[AuthContext] onAuthStateChange: no session, resolving _authReadyPromise')
           _authReadyResolve?.()
         }
       },

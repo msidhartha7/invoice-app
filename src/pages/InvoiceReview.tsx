@@ -76,9 +76,12 @@ export default function InvoiceReview() {
 
   async function createPaymentLink(invoice: Invoice): Promise<string> {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    console.log('[InvoiceReview] createPaymentLink: starting for invoice', invoice.id, 'supabaseUrl set=', !!supabaseUrl)
     const session = await getValidSession()
+    console.log('[InvoiceReview] createPaymentLink: session valid=', !!session)
 
     if (supabaseUrl && session) {
+      console.log('[InvoiceReview] createPaymentLink: calling edge function...')
       const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
         method: 'POST',
         headers: {
@@ -91,11 +94,14 @@ export default function InvoiceReview() {
           client_name: invoice.client_name,
         }),
       })
+      console.log('[InvoiceReview] createPaymentLink: response status=', res.status, 'ok=', res.ok)
       if (!res.ok) {
         const errData = (await res.json()) as { error?: string }
+        console.error('[InvoiceReview] createPaymentLink: error response', errData)
         throw new Error(errData.error ?? `Payment service error: ${res.status}`)
       }
       const linkData = (await res.json()) as { payment_link?: string }
+      console.log('[InvoiceReview] createPaymentLink: success, payment_link=', linkData.payment_link)
       if (!linkData.payment_link) {
         throw new Error('No payment link returned from payment processor')
       }
@@ -103,6 +109,7 @@ export default function InvoiceReview() {
     }
 
     // Mock fallback
+    console.log('[InvoiceReview] createPaymentLink: using mock fallback')
     const paymentLink = `https://pay.dodopayments.com/mock/${invoice.id}`
     await supabase
       .from('invoices')
@@ -113,6 +120,7 @@ export default function InvoiceReview() {
 
   async function handleSave() {
     if (!user || !clientName.trim() || items.length === 0 || total <= 0) return
+    console.log('[InvoiceReview] handleSave: starting, user=', user.id)
     setIsSaving(true)
     setError('')
 
@@ -120,6 +128,7 @@ export default function InvoiceReview() {
       // Phase 1: Save invoice as draft
       let invoice = savedInvoiceRef.current
       if (!invoice) {
+        console.log('[InvoiceReview] handleSave: phase 1 - inserting invoice draft...')
         const { data, error: insertError } = await supabase
           .from('invoices')
           .insert({
@@ -132,21 +141,31 @@ export default function InvoiceReview() {
           .select()
           .single()
 
-        if (insertError) throw insertError
+        if (insertError) {
+          console.error('[InvoiceReview] handleSave: phase 1 insert error', insertError)
+          throw insertError
+        }
         invoice = data as Invoice
         savedInvoiceRef.current = invoice
+        console.log('[InvoiceReview] handleSave: phase 1 done, invoice id=', invoice.id)
+      } else {
+        console.log('[InvoiceReview] handleSave: phase 1 skipped (already saved), invoice id=', invoice.id)
       }
 
       // Phase 2: Create payment link (best-effort)
+      console.log('[InvoiceReview] handleSave: phase 2 - creating payment link...')
       const paymentLink = await createPaymentLink(invoice)
+      console.log('[InvoiceReview] handleSave: phase 2 done, paymentLink=', paymentLink)
       const sentInvoice: Invoice = { ...invoice, payment_link: paymentLink, status: 'sent' }
       setCurrentInvoice(sentInvoice)
       clearInvoiceFlow()
       // Restore currentInvoice since clearInvoiceFlow clears it
       useAppStore.getState().setCurrentInvoice(sentInvoice)
+      console.log('[InvoiceReview] handleSave: navigating to /invoice/sent')
       navigate({ to: '/invoice/sent' })
     } catch (err) {
       const message = (err as Error).message || 'Failed to save invoice'
+      console.error('[InvoiceReview] handleSave: caught error, savedInvoice=', !!savedInvoiceRef.current, 'message=', message)
       if (savedInvoiceRef.current) {
         setError(`Invoice saved, but payment link creation failed. ${message}`)
       } else {

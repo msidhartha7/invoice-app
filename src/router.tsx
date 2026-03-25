@@ -63,11 +63,15 @@ const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'authenticated',
   beforeLoad: async () => {
+    console.log('[router] authenticatedRoute.beforeLoad: waiting for auth...')
     await waitForAuth()
+    console.log('[router] authenticatedRoute.beforeLoad: auth ready, user=', _authState.user?.id ?? 'null', 'subscribed=', _authState.profile?.is_subscribed ?? false)
     if (!_authState.user) {
+      console.log('[router] authenticatedRoute.beforeLoad: no user, redirecting to /login')
       throw redirect({ to: '/login' })
     }
     if (!_authState.profile?.is_subscribed) {
+      console.log('[router] authenticatedRoute.beforeLoad: not subscribed, redirecting to /paywall')
       throw redirect({ to: '/paywall' })
     }
   },
@@ -80,12 +84,17 @@ const dashboardRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/',
   loader: async () => {
+    console.log('[router] dashboardRoute.loader: starting, user=', _authState.user?.id ?? 'null')
     const { data, error } = await supabase
       .from('invoices')
       .select('*')
       .eq('user_id', _authState.user!.id)
       .order('created_at', { ascending: false })
-    if (error) throw error
+    if (error) {
+      console.error('[router] dashboardRoute.loader: supabase error', error)
+      throw error
+    }
+    console.log('[router] dashboardRoute.loader: loaded', data?.length ?? 0, 'invoices')
     return { invoices: (data as Invoice[]) ?? [] }
   },
   staleTime: 30_000,
