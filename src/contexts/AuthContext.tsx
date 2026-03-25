@@ -59,9 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           try {
             console.log('[AuthContext] onAuthStateChange: fetching profile for user=', session.user.id)
-            const fetchedProfile = await fetchProfile(session.user.id)
-            console.log('[AuthContext] onAuthStateChange: profile fetched, is_subscribed=', fetchedProfile?.is_subscribed ?? false)
+            const timeout = new Promise<null>((resolve) =>
+              setTimeout(() => {
+                console.warn('[AuthContext] onAuthStateChange: profile fetch timed out after 5s')
+                resolve(null)
+              }, 5000),
+            )
+            const fetchedProfile = await Promise.race([fetchProfile(session.user.id), timeout])
+            console.log('[AuthContext] onAuthStateChange: profile result, is_subscribed=', fetchedProfile?.is_subscribed ?? false)
             _authState = { user: session.user, profile: fetchedProfile }
+          } catch (profileErr) {
+            console.error('[AuthContext] onAuthStateChange: profile fetch failed', profileErr)
+            _authState = { user: session.user, profile: null }
           } finally {
             setIsLoading(false)
             console.log('[AuthContext] onAuthStateChange: resolving _authReadyPromise')
