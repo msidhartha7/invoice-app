@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^3.4.4",
+    "@react-pdf/renderer": "^4.3.2",
     "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-router": "^1.168.2",
     "@tanstack/router-devtools": "^1.166.11",
