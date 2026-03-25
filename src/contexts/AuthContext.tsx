@@ -38,34 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   async function fetchProfile(userId: string) {
-    
-    console.log(supabase);  
-    console.log(await supabase.auth.getSession()) // debug log to check session state
-
-    const { data, error, status } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      // .
-      // .maybeSingle()  // handles missing row cleanly
-
-    if (error) {
-      console.error('[AuthContext] fetchProfile error', { userId, status, error })
-      // for 404 / 406 we may want to continue with null profile, not crash the whole app
-      if (status === 406 || status === 404) {
-        setProfile(null)
-        return null
-      }
-      throw error // let caller catch unhandled cases
-    }
-
-    if (!data) {
-      setProfile(null)
-      return null
-    }
-
-    setProfile(data as Profile)
-    return data as Profile
+      .single()
+    setProfile(data as Profile | null)
+    return data as Profile | null
   }
 
   async function refreshProfile() {
