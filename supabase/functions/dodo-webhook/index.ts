@@ -1,8 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Svix signs: msgId + "." + msgTimestamp + "." + rawBody
-// svix-signature header is "v1,<base64>" (may be comma-separated list)
+// Signs: webhook-id + "." + webhook-timestamp + "." + rawBody
+// webhook-signature header is "v1,<base64>"
 async function verifySvixSignature(
   secret: string,
   msgId: string,
@@ -27,9 +27,9 @@ async function verifySvixSignature(
 serve(async (req) => {
   try {
     const webhookSecret = Deno.env.get('DODO_WEBHOOK_SECRET')
-    const msgId = req.headers.get('svix-id')
-    const timestamp = req.headers.get('svix-timestamp')
-    const signatureHeader = req.headers.get('svix-signature')
+    const msgId = req.headers.get('webhook-id')
+    const timestamp = req.headers.get('webhook-timestamp')
+    const signatureHeader = req.headers.get('webhook-signature')
     const rawBody = await req.text()
 
     if (webhookSecret) {
