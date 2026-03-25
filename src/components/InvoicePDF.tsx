@@ -1,4 +1,5 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View } from '@react-pdf/renderer'
+import type { Style } from '@react-pdf/types'
 import type { Invoice, Profile } from '../types'
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -12,7 +13,9 @@ function sym(currency: string) {
   return CURRENCY_SYMBOLS[currency] ?? `${currency} `
 }
 
-const s = StyleSheet.create({
+// Plain objects — no StyleSheet.create() to avoid registry ID mismatch
+// when Vite bundles multiple copies of @react-pdf/renderer
+const s: Record<string, Style> = {
   page: { padding: 48, backgroundColor: '#FFFFFF', fontFamily: 'Helvetica' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
   brandName: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
@@ -56,10 +59,6 @@ const s = StyleSheet.create({
     borderBottomColor: '#F0F0F0',
   },
   cell: { fontSize: 11, color: '#1A1A1A' },
-  colDesc: { flex: 4 },
-  colQty: { flex: 1, textAlign: 'right' },
-  colRate: { flex: 1.5, textAlign: 'right' },
-  colAmt: { flex: 1.5, textAlign: 'right' },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -70,11 +69,7 @@ const s = StyleSheet.create({
   },
   totalLabel: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
   totalValue: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#6C47FF' },
-  taxRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
+  taxRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
   taxLabel: { fontSize: 9, color: '#888888' },
   taxValue: { fontSize: 9, color: '#888888' },
   payBlock: {
@@ -101,7 +96,18 @@ const s = StyleSheet.create({
     fontSize: 8,
     color: '#BBBBBB',
   },
-})
+}
+
+// Pre-merged column styles to avoid style arrays entirely
+const colDesc: Style = { ...s.cell, flex: 4 }
+const colQty: Style = { ...s.cell, flex: 1, textAlign: 'right' }
+const colRate: Style = { ...s.cell, flex: 1.5, textAlign: 'right' }
+const colAmt: Style = { ...s.cell, flex: 1.5, textAlign: 'right' }
+const thDesc: Style = { ...s.tableHeadText, flex: 4 }
+const thQty: Style = { ...s.tableHeadText, flex: 1, textAlign: 'right' }
+const thRate: Style = { ...s.tableHeadText, flex: 1.5, textAlign: 'right' }
+const thAmt: Style = { ...s.tableHeadText, flex: 1.5, textAlign: 'right' }
+const brandMetaRight: Style = { ...s.brandMeta, marginTop: 8, textAlign: 'right' }
 
 interface InvoicePDFProps {
   invoice: Invoice
@@ -119,20 +125,18 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
   const currencySymbol = sym(currency)
   const businessName = profile?.business_name ?? 'My Business'
 
-  // Build address string
   const addressParts = [
     profile?.address_line1,
     profile?.address_line2,
     [profile?.city, profile?.state, profile?.zip].filter(Boolean).join(', '),
     profile?.country,
-  ].filter(Boolean)
+  ].filter(Boolean) as string[]
 
-  // Build contact string
   const contactParts = [
     profile?.phone,
     profile?.business_email,
     profile?.website,
-  ].filter(Boolean)
+  ].filter(Boolean) as string[]
 
   return (
     <Document>
@@ -151,7 +155,7 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
             <View style={s.badge}>
               <Text style={s.badgeText}>INVOICE</Text>
             </View>
-            <Text style={[s.brandMeta, { marginTop: 8, textAlign: 'right' }]}>{date}</Text>
+            <Text style={brandMetaRight}>{date}</Text>
           </View>
         </View>
 
@@ -161,18 +165,18 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
         </View>
 
         <View style={s.tableHead}>
-          <Text style={[s.tableHeadText, s.colDesc]}>Description</Text>
-          <Text style={[s.tableHeadText, s.colQty]}>Qty</Text>
-          <Text style={[s.tableHeadText, s.colRate]}>Rate</Text>
-          <Text style={[s.tableHeadText, s.colAmt]}>Amount</Text>
+          <Text style={thDesc}>Description</Text>
+          <Text style={thQty}>Qty</Text>
+          <Text style={thRate}>Rate</Text>
+          <Text style={thAmt}>Amount</Text>
         </View>
 
         {invoice.items.map((item) => (
           <View key={item.id} style={s.row}>
-            <Text style={[s.cell, s.colDesc]}>{item.description}</Text>
-            <Text style={[s.cell, s.colQty]}>{String(item.quantity)}</Text>
-            <Text style={[s.cell, s.colRate]}>{`${currencySymbol}${item.rate.toFixed(2)}`}</Text>
-            <Text style={[s.cell, s.colAmt]}>{`${currencySymbol}${item.amount.toFixed(2)}`}</Text>
+            <Text style={colDesc}>{item.description}</Text>
+            <Text style={colQty}>{String(item.quantity)}</Text>
+            <Text style={colRate}>{`${currencySymbol}${item.rate.toFixed(2)}`}</Text>
+            <Text style={colAmt}>{`${currencySymbol}${item.amount.toFixed(2)}`}</Text>
           </View>
         ))}
 
