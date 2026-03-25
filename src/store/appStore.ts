@@ -4,7 +4,9 @@ import type { ExtractedInvoiceData, Invoice, LineItem } from '../types'
 
 export interface DraftForm {
   clientName: string
+  projectName: string
   items: LineItem[]
+  deliveryFee: number
 }
 
 interface AppState {
@@ -41,10 +43,12 @@ export const useAppStore = create<AppState>()(
           return {
             draftForm: {
               clientName: state.extractedData.client_name,
+              projectName: state.extractedData.project_name ?? '',
               items: state.extractedData.items.map((item) => ({
                 ...item,
                 id: item.id ?? crypto.randomUUID(),
               })),
+              deliveryFee: 0,
             },
           }
         }),

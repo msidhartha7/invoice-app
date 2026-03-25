@@ -11,7 +11,7 @@ import type { Invoice, LineItem } from '../types'
 export default function InvoiceReview() {
   const navigate = useNavigate()
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const {
     extractedData,
     draftForm,
@@ -36,8 +36,13 @@ export default function InvoiceReview() {
   if (!extractedData && !draftForm) return <Navigate to="/invoice/new" />
 
   const clientName = draftForm?.clientName ?? ''
+  const projectName = draftForm?.projectName ?? ''
   const items = draftForm?.items ?? []
-  const total = useMemo(() => items.reduce((sum, item) => sum + (item.amount || 0), 0), [items])
+  const deliveryFee = draftForm?.deliveryFee ?? 0
+  const taxRate = profile?.tax_rate ?? 0
+  const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.amount || 0), 0), [items])
+  const taxAmount = useMemo(() => subtotal * (taxRate / 100), [subtotal, taxRate])
+  const total = useMemo(() => subtotal + taxAmount + deliveryFee, [subtotal, taxAmount, deliveryFee])
 
   function markTouched(field: string) {
     setTouched((prev) => new Set(prev).add(field))
@@ -46,6 +51,16 @@ export default function InvoiceReview() {
   function setClientName(name: string) {
     if (!draftForm) return
     setDraftForm({ ...draftForm, clientName: name })
+  }
+
+  function setProjectName(name: string) {
+    if (!draftForm) return
+    setDraftForm({ ...draftForm, projectName: name })
+  }
+
+  function setDeliveryFee(fee: number) {
+    if (!draftForm) return
+    setDraftForm({ ...draftForm, deliveryFee: fee })
   }
 
   function updateItems(updater: (prev: LineItem[]) => LineItem[]) {
@@ -69,7 +84,7 @@ export default function InvoiceReview() {
   function addItem() {
     updateItems((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, amount: 0 },
+      { id: crypto.randomUUID(), description: '', size: '', quantity: 1, rate: 0, amount: 0 },
     ])
   }
 
@@ -136,8 +151,10 @@ export default function InvoiceReview() {
           .from('invoices')
           .update({
             client_name: clientName.trim(),
+            project_name: projectName.trim() || null,
             items,
             total_amount: total,
+            delivery_fee: deliveryFee,
           })
           .eq('id', editingInvoiceId)
 
@@ -156,8 +173,10 @@ export default function InvoiceReview() {
           .insert({
             user_id: user.id,
             client_name: clientName.trim(),
+            project_name: projectName.trim() || null,
             items,
             total_amount: total,
+            delivery_fee: deliveryFee,
             status: 'draft',
           })
           .select()
@@ -293,7 +312,7 @@ export default function InvoiceReview() {
           )}
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="text-xs font-semibold text-[#888] uppercase tracking-wider block mb-2">
             Client
           </label>
@@ -307,6 +326,18 @@ export default function InvoiceReview() {
           {touched.has('clientName') && !clientName.trim() && (
             <p className="text-xs text-red-500 mt-1">Client name is required</p>
           )}
+        </div>
+
+        <div className="mb-6">
+          <label className="text-xs font-semibold text-[#888] uppercase tracking-wider block mb-2">
+            Project <span className="font-normal normal-case text-[#BBB]">(optional)</span>
+          </label>
+          <input
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            placeholder="e.g. Garage Workshop"
+            className="w-full h-[56px] px-4 rounded-2xl border border-[#E8E8E8] bg-white text-[#1A1A1A] text-base focus:outline-none focus:ring-2 focus:ring-[#6C47FF]/30 focus:border-[#6C47FF] transition"
+          />
         </div>
 
         <div className="mb-4">
@@ -344,6 +375,12 @@ export default function InvoiceReview() {
                     {touched.has(`item-${item.id}`) && !item.description.trim() && (
                       <p className="text-xs text-red-500 mt-1">Description is required</p>
                     )}
+                    <input
+                      value={item.size ?? ''}
+                      onChange={(e) => updateItem(item.id, 'size', e.target.value)}
+                      placeholder="Size / spec (optional)"
+                      className="w-full text-xs text-[#888] bg-transparent focus:outline-none placeholder-[#CCC] mt-1"
+                    />
                   </div>
                   <button
                     onClick={() => removeItem(item.id)}
@@ -390,9 +427,36 @@ export default function InvoiceReview() {
           </div>
         </div>
 
-        <div className="bg-[#6C47FF]/5 rounded-3xl p-5 flex items-center justify-between mb-4">
-          <span className="font-semibold text-[#1A1A1A]">Total</span>
-          <span className="text-2xl font-bold text-[#6C47FF]">${total.toFixed(2)}</span>
+        <div className="bg-[#6C47FF]/5 rounded-3xl p-5 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-[#888]">Subtotal</span>
+            <span className="text-sm text-[#1A1A1A]">${subtotal.toFixed(2)}</span>
+          </div>
+          {taxRate > 0 && (
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-[#888]">Tax ({taxRate}%)</span>
+              <span className="text-sm text-[#1A1A1A]">${taxAmount.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm text-[#888]">Delivery Fee</label>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-[#888]">$</span>
+              <input
+                type="number"
+                value={deliveryFee || ''}
+                onChange={(e) => setDeliveryFee(parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                className="w-20 text-sm text-right text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#CCC]"
+              />
+            </div>
+          </div>
+          <div className="border-t border-[#6C47FF]/20 pt-3 flex items-center justify-between">
+            <span className="font-semibold text-[#1A1A1A]">Total</span>
+            <span className="text-2xl font-bold text-[#6C47FF]">${total.toFixed(2)}</span>
+          </div>
         </div>
 
         {error && (

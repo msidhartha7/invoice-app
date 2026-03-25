@@ -64,7 +64,12 @@ export default function InvoiceDetail() {
   }
 
   function handleEdit() {
-    setDraftForm({ clientName: invoice.client_name, items: invoice.items })
+    setDraftForm({
+      clientName: invoice.client_name,
+      projectName: invoice.project_name ?? '',
+      items: invoice.items,
+      deliveryFee: invoice.delivery_fee ?? 0,
+    })
     setEditingInvoiceId(invoice.id)
     navigate({ to: '/invoice/review' })
   }
@@ -99,6 +104,9 @@ export default function InvoiceDetail() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-[#1A1A1A] truncate">{invoice.client_name}</h1>
+              {invoice.project_name && (
+                <p className="text-sm text-[#888] mt-0.5 truncate">{invoice.project_name}</p>
+              )}
               <p className="text-sm text-[#AAA] mt-1">{date}</p>
             </div>
             <span
@@ -119,6 +127,9 @@ export default function InvoiceDetail() {
                   <div key={item.id} className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#1A1A1A]">{item.description}</p>
+                      {item.size && (
+                        <p className="text-xs text-[#888] mt-0.5">{item.size}</p>
+                      )}
                       <p className="text-xs text-[#AAA] mt-0.5">
                         {item.quantity} × ${item.rate.toFixed(2)}
                       </p>
@@ -130,9 +141,39 @@ export default function InvoiceDetail() {
                 ))}
               </div>
             </div>
-            <div className="border-t border-[#E8E8E8] px-5 py-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-[#888]">Total</p>
-              <p className="text-lg font-bold text-[#1A1A1A]">${invoice.total_amount.toFixed(2)}</p>
+            <div className="border-t border-[#E8E8E8] px-5 py-4 flex flex-col gap-1.5">
+              {(() => {
+                const subtotal = invoice.items.reduce((s, i) => s + (i.amount || 0), 0)
+                const taxRate = profile?.tax_rate ?? 0
+                const taxAmount = subtotal * (taxRate / 100)
+                const deliveryFee = invoice.delivery_fee ?? 0
+                return (
+                  <>
+                    {(taxRate > 0 || deliveryFee > 0) && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-[#AAA]">Subtotal</p>
+                        <p className="text-xs text-[#888]">${subtotal.toFixed(2)}</p>
+                      </div>
+                    )}
+                    {taxRate > 0 && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-[#AAA]">Tax ({taxRate}%)</p>
+                        <p className="text-xs text-[#888]">${taxAmount.toFixed(2)}</p>
+                      </div>
+                    )}
+                    {deliveryFee > 0 && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-[#AAA]">Delivery Fee</p>
+                        <p className="text-xs text-[#888]">${deliveryFee.toFixed(2)}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-sm font-semibold text-[#888]">Total</p>
+                      <p className="text-lg font-bold text-[#1A1A1A]">${invoice.total_amount.toFixed(2)}</p>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </div>
 

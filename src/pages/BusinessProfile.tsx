@@ -39,6 +39,7 @@ interface FormState {
   phone: string
   business_email: string
   tax_id: string
+  tax_rate: string
   currency: string
   website: string
 }
@@ -58,6 +59,7 @@ export default function BusinessProfile() {
     phone: '',
     business_email: '',
     tax_id: '',
+    tax_rate: '',
     currency: 'USD',
     website: '',
   })
@@ -78,6 +80,7 @@ export default function BusinessProfile() {
         phone: profile.phone ?? '',
         business_email: profile.business_email ?? '',
         tax_id: profile.tax_id ?? '',
+        tax_rate: profile.tax_rate != null ? String(profile.tax_rate) : '',
         currency: profile.currency ?? 'USD',
         website: profile.website ?? '',
       })
@@ -105,6 +108,7 @@ export default function BusinessProfile() {
       phone: form.phone.trim() || null,
       business_email: form.business_email.trim() || null,
       tax_id: form.tax_id.trim() || null,
+      tax_rate: form.tax_rate.trim() ? parseFloat(form.tax_rate) : null,
       currency: form.currency,
       website: form.website.trim() || null,
     }).eq('id', user.id)
@@ -290,6 +294,19 @@ export default function BusinessProfile() {
                 value={form.tax_id}
                 onChange={(e) => set('tax_id', e.target.value)}
                 placeholder="US 12-3456789"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              {label('Default Tax Rate (%)')}
+              <input
+                value={form.tax_rate}
+                onChange={(e) => set('tax_rate', e.target.value)}
+                placeholder="0"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
                 className={inputClass}
               />
             </div>

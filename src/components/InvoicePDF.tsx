@@ -99,11 +99,13 @@ const s: Record<string, Style> = {
 }
 
 // Pre-merged column styles to avoid style arrays entirely
-const colDesc: Style = { ...s.cell, flex: 4 }
+const colDesc: Style = { ...s.cell, flex: 3 }
+const colSize: Style = { ...s.cell, flex: 1.5, color: '#888888', fontSize: 10 }
 const colQty: Style = { ...s.cell, flex: 1, textAlign: 'right' }
 const colRate: Style = { ...s.cell, flex: 1.5, textAlign: 'right' }
 const colAmt: Style = { ...s.cell, flex: 1.5, textAlign: 'right' }
-const thDesc: Style = { ...s.tableHeadText, flex: 4 }
+const thDesc: Style = { ...s.tableHeadText, flex: 3 }
+const thSize: Style = { ...s.tableHeadText, flex: 1.5 }
 const thQty: Style = { ...s.tableHeadText, flex: 1, textAlign: 'right' }
 const thRate: Style = { ...s.tableHeadText, flex: 1.5, textAlign: 'right' }
 const thAmt: Style = { ...s.tableHeadText, flex: 1.5, textAlign: 'right' }
@@ -162,10 +164,14 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
         <View style={s.clientBlock}>
           <Text style={s.sectionLabel}>Bill To</Text>
           <Text style={s.clientName}>{invoice.client_name}</Text>
+          {invoice.project_name ? (
+            <Text style={{ ...s.brandMeta, marginTop: 4 }}>{invoice.project_name}</Text>
+          ) : null}
         </View>
 
         <View style={s.tableHead}>
           <Text style={thDesc}>Description</Text>
+          <Text style={thSize}>Size / Spec</Text>
           <Text style={thQty}>Qty</Text>
           <Text style={thRate}>Rate</Text>
           <Text style={thAmt}>Amount</Text>
@@ -174,11 +180,41 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
         {invoice.items.map((item) => (
           <View key={item.id} style={s.row}>
             <Text style={colDesc}>{item.description}</Text>
+            <Text style={colSize}>{item.size ?? ''}</Text>
             <Text style={colQty}>{String(item.quantity)}</Text>
             <Text style={colRate}>{`${currencySymbol}${item.rate.toFixed(2)}`}</Text>
             <Text style={colAmt}>{`${currencySymbol}${item.amount.toFixed(2)}`}</Text>
           </View>
         ))}
+
+        {(() => {
+          const subtotal = invoice.items.reduce((sum, i) => sum + (i.amount || 0), 0)
+          const taxRate = profile?.tax_rate ?? 0
+          const taxAmount = subtotal * (taxRate / 100)
+          const deliveryFee = invoice.delivery_fee ?? 0
+          return (
+            <>
+              {(taxRate > 0 || deliveryFee > 0) ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                  <Text style={s.taxLabel}>Subtotal</Text>
+                  <Text style={s.taxValue}>{`${currencySymbol}${subtotal.toFixed(2)}`}</Text>
+                </View>
+              ) : null}
+              {taxRate > 0 ? (
+                <View style={s.taxRow}>
+                  <Text style={s.taxLabel}>{`Tax (${taxRate}%)`}</Text>
+                  <Text style={s.taxValue}>{`${currencySymbol}${taxAmount.toFixed(2)}`}</Text>
+                </View>
+              ) : null}
+              {deliveryFee > 0 ? (
+                <View style={s.taxRow}>
+                  <Text style={s.taxLabel}>Delivery Fee</Text>
+                  <Text style={s.taxValue}>{`${currencySymbol}${deliveryFee.toFixed(2)}`}</Text>
+                </View>
+              ) : null}
+            </>
+          )
+        })()}
 
         <View style={s.totalRow}>
           <Text style={s.totalLabel}>TOTAL DUE</Text>

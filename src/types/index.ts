@@ -13,6 +13,7 @@ export interface Profile {
   phone: string | null
   business_email: string | null
   tax_id: string | null
+  tax_rate: number | null
   currency: string
   website: string | null
 }
@@ -20,6 +21,7 @@ export interface Profile {
 export interface LineItem {
   id: string
   description: string
+  size?: string
   quantity: number
   rate: number
   amount: number
@@ -29,8 +31,10 @@ export interface Invoice {
   id: string
   user_id: string
   client_name: string
+  project_name: string | null
   items: LineItem[]
   total_amount: number
+  delivery_fee: number
   status: 'draft' | 'sent' | 'paid'
   payment_link: string | null
   created_at: string
@@ -38,6 +42,7 @@ export interface Invoice {
 
 export interface ExtractedInvoiceData {
   client_name: string
+  project_name?: string
   items: LineItem[]
   total: number
 }
