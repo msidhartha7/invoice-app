@@ -170,15 +170,15 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
         {invoice.items.map((item) => (
           <View key={item.id} style={s.row}>
             <Text style={[s.cell, s.colDesc]}>{item.description}</Text>
-            <Text style={[s.cell, s.colQty]}>{item.quantity}</Text>
-            <Text style={[s.cell, s.colRate]}>{currencySymbol}{item.rate.toFixed(2)}</Text>
-            <Text style={[s.cell, s.colAmt]}>{currencySymbol}{item.amount.toFixed(2)}</Text>
+            <Text style={[s.cell, s.colQty]}>{String(item.quantity)}</Text>
+            <Text style={[s.cell, s.colRate]}>{`${currencySymbol}${item.rate.toFixed(2)}`}</Text>
+            <Text style={[s.cell, s.colAmt]}>{`${currencySymbol}${item.amount.toFixed(2)}`}</Text>
           </View>
         ))}
 
         <View style={s.totalRow}>
           <Text style={s.totalLabel}>TOTAL DUE</Text>
-          <Text style={s.totalValue}>{currencySymbol}{invoice.total_amount.toFixed(2)}</Text>
+          <Text style={s.totalValue}>{`${currencySymbol}${invoice.total_amount.toFixed(2)}`}</Text>
         </View>
 
         {profile?.tax_id ? (

@@ -7,4 +7,10 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    exclude: ['@react-pdf/renderer'],
+  },
 })
