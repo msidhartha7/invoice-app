@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
+import { useRouter, useNavigate } from '@tanstack/react-router'
 import { getRouteApi } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Link as LinkIcon, Download } from 'lucide-react'
+import { ArrowLeft, Link as LinkIcon, Download, Pencil } from 'lucide-react'
 import { AppLayout } from '../layouts/AppLayout'
 import { downloadInvoicePDF } from '../lib/pdf'
 import { useAuth } from '../contexts/AuthContext'
+import { useAppStore } from '../store/appStore'
 
 const routeApi = getRouteApi('/authenticated/invoice/$invoiceId')
 
@@ -17,8 +18,10 @@ const STATUS: Record<string, string> = {
 
 export default function InvoiceDetail() {
   const router = useRouter()
+  const navigate = useNavigate()
   const { invoice } = routeApi.useLoaderData()
   const { profile } = useAuth()
+  const { setDraftForm, setEditingInvoiceId } = useAppStore()
   const [copied, setCopied] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
 
@@ -58,6 +61,12 @@ export default function InvoiceDetail() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  function handleEdit() {
+    setDraftForm({ clientName: invoice.client_name, items: invoice.items })
+    setEditingInvoiceId(invoice.id)
+    navigate({ to: '/invoice/review' })
   }
 
   async function handleDownloadPDF() {
@@ -162,6 +171,14 @@ export default function InvoiceDetail() {
                 <Download className="w-4 h-4" />
               )}
               Download PDF
+            </button>
+
+            <button
+              onClick={handleEdit}
+              className="h-[56px] bg-white border border-[#E8E8E8] text-[#1A1A1A] font-semibold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition"
+            >
+              <Pencil className="w-4 h-4" />
+              Edit Bill
             </button>
           </div>
         </motion.div>

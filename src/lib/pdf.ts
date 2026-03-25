@@ -17,6 +17,8 @@ export async function downloadInvoicePDF(
   anchor.download = `invoice-${invoice.client_name
     .replace(/\s+/g, '-')
     .toLowerCase()}-${invoice.id.slice(0, 8)}.pdf`
+  document.body.appendChild(anchor)
   anchor.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(anchor)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }

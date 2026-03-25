@@ -12,11 +12,13 @@ interface AppState {
   extractedData: ExtractedInvoiceData | null
   currentInvoice: Invoice | null
   draftForm: DraftForm | null
+  editingInvoiceId: string | null
 
   // Actions
   setExtractedData: (data: ExtractedInvoiceData | null) => void
   setCurrentInvoice: (invoice: Invoice | null) => void
   setDraftForm: (form: DraftForm) => void
+  setEditingInvoiceId: (id: string | null) => void
   initDraftFromExtracted: () => void
   clearInvoiceFlow: () => void
 }
@@ -27,10 +29,12 @@ export const useAppStore = create<AppState>()(
       extractedData: null,
       currentInvoice: null,
       draftForm: null,
+      editingInvoiceId: null,
 
       setExtractedData: (data) => set({ extractedData: data }),
       setCurrentInvoice: (invoice) => set({ currentInvoice: invoice }),
       setDraftForm: (form) => set({ draftForm: form }),
+      setEditingInvoiceId: (id) => set({ editingInvoiceId: id }),
       initDraftFromExtracted: () =>
         set((state) => {
           if (state.draftForm || !state.extractedData) return state
@@ -45,7 +49,7 @@ export const useAppStore = create<AppState>()(
           }
         }),
       clearInvoiceFlow: () =>
-        set({ extractedData: null, currentInvoice: null, draftForm: null }),
+        set({ extractedData: null, currentInvoice: null, draftForm: null, editingInvoiceId: null }),
     }),
     {
       name: 'niche-invoice-app',
@@ -54,6 +58,7 @@ export const useAppStore = create<AppState>()(
         extractedData: state.extractedData,
         currentInvoice: state.currentInvoice,
         draftForm: state.draftForm,
+        editingInvoiceId: state.editingInvoiceId,
       }),
     },
   ),

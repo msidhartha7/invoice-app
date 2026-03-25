@@ -19,6 +19,7 @@ export default function InvoiceReview() {
     initDraftFromExtracted,
     setCurrentInvoice,
     clearInvoiceFlow,
+    editingInvoiceId,
   } = useAppStore()
 
   const [isSaving, setIsSaving] = useState(false)
@@ -120,11 +121,28 @@ export default function InvoiceReview() {
 
   async function handleSave() {
     if (!user || !clientName.trim() || items.length === 0 || total <= 0) return
-    console.log('[InvoiceReview] handleSave: starting, user=', user.id)
+    console.log('[InvoiceReview] handleSave: starting, user=', user.id, 'editing=', editingInvoiceId)
     setIsSaving(true)
     setError('')
 
     try {
+      // Edit mode: update existing invoice
+      if (editingInvoiceId) {
+        const { error: updateError } = await supabase
+          .from('invoices')
+          .update({
+            client_name: clientName.trim(),
+            items,
+            total_amount: total,
+          })
+          .eq('id', editingInvoiceId)
+
+        if (updateError) throw updateError
+        clearInvoiceFlow()
+        navigate({ to: '/invoice/$invoiceId', params: { invoiceId: editingInvoiceId } })
+        return
+      }
+
       // Phase 1: Save invoice as draft
       let invoice = savedInvoiceRef.current
       if (!invoice) {
@@ -209,12 +227,14 @@ export default function InvoiceReview() {
         </p>
       )}
       <button
-        onClick={savedInvoiceRef.current ? handleRetryPaymentLink : handleSave}
+        onClick={!editingInvoiceId && savedInvoiceRef.current ? handleRetryPaymentLink : handleSave}
         disabled={isDisabled}
         className="w-full h-[56px] bg-[#6C47FF] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
       >
         {isSaving ? (
           <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        ) : editingInvoiceId ? (
+          `Save Changes · $${total.toFixed(2)}`
         ) : savedInvoiceRef.current ? (
           'Retry Payment Link'
         ) : (
@@ -235,7 +255,9 @@ export default function InvoiceReview() {
           Back
         </button>
 
-        <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">Review Invoice</h1>
+        <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">
+          {editingInvoiceId ? 'Edit Invoice' : 'Review Invoice'}
+        </h1>
 
         <div className="mb-6">
           <label className="text-xs font-semibold text-[#888] uppercase tracking-wider block mb-2">
