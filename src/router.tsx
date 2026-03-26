@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import { _authState, waitForAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
 import type { Invoice } from './types'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Paywall from './pages/Paywall'
 import Dashboard from './pages/Dashboard'
@@ -39,6 +40,13 @@ const rootRoute = createRootRoute({
   ),
 })
 
+// Public: /landing
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/landing',
+  component: Landing,
+})
+
 // Public: /login
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -53,7 +61,7 @@ const paywallRoute = createRoute({
   beforeLoad: async () => {
     await waitForAuth()
     if (!_authState.user) {
-      throw redirect({ to: '/login' })
+      throw redirect({ to: '/landing' })
     }
   },
   component: Paywall,
@@ -68,8 +76,8 @@ const authenticatedRoute = createRoute({
     await waitForAuth()
     console.log('[router] authenticatedRoute.beforeLoad: auth ready, user=', _authState.user?.id ?? 'null', 'subscribed=', _authState.profile?.is_subscribed ?? false)
     if (!_authState.user) {
-      console.log('[router] authenticatedRoute.beforeLoad: no user, redirecting to /login')
-      throw redirect({ to: '/login' })
+      console.log('[router] authenticatedRoute.beforeLoad: no user, redirecting to /landing')
+      throw redirect({ to: '/landing' })
     }
     if (!_authState.profile?.is_subscribed) {
       console.log('[router] authenticatedRoute.beforeLoad: not subscribed, redirecting to /paywall')
@@ -171,6 +179,7 @@ const catchAllRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
+  landingRoute,
   loginRoute,
   paywallRoute,
   authenticatedRoute.addChildren([
