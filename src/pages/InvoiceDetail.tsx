@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useRouter, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { getRouteApi } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Link as LinkIcon, Download, Pencil } from 'lucide-react'
@@ -18,7 +18,6 @@ const STATUS: Record<string, string> = {
 }
 
 export default function InvoiceDetail() {
-  const router = useRouter()
   const navigate = useNavigate()
   const { invoice } = routeApi.useLoaderData()
   const { profile } = useAuth()
@@ -91,7 +90,7 @@ export default function InvoiceDetail() {
       <div className="px-6 pt-12 pb-8">
         {/* Back button */}
         <button
-          onClick={() => router.history.back()}
+          onClick={() => navigate({ to: '/' })}
           className="flex items-center gap-1.5 text-[#888] mb-6 active:opacity-60 transition"
         >
           <ArrowLeft className="w-4 h-4" />
