@@ -45,6 +45,7 @@ serve(async (req) => {
     const payload = JSON.parse(rawBody) as {
       type: string
       data: {
+        payment_id?: string
         customer?: { customer_id?: string; email?: string }
         metadata?: { invoice_id?: string }
       }
@@ -97,7 +98,7 @@ serve(async (req) => {
         if (data.metadata?.invoice_id) {
           await supabase
             .from('invoices')
-            .update({ status: 'paid' })
+            .update({ status: 'paid', payment_id: data.payment_id ?? null })
             .eq('id', data.metadata.invoice_id)
         }
         break

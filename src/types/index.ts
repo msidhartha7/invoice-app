@@ -39,6 +39,7 @@ export interface Invoice {
   delivery_fee: number
   status: 'draft' | 'sent' | 'paid'
   payment_link: string | null
+  payment_id: string | null
   created_at: string
 }
 
