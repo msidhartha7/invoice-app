@@ -74,7 +74,7 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
               >
-                <InvoiceCard invoice={invoice} />
+                <InvoiceCard invoice={invoice} currency={profile?.currency ?? 'USD'} />
               </motion.div>
             ))}
           </div>

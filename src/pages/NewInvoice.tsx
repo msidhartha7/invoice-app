@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Sparkles, FileText } from 'lucide-react'
+import { ArrowLeft, Sparkles, FileText, PenLine } from 'lucide-react'
 import { CameraCapture } from '../components/CameraCapture'
 import { processIntake } from '../lib/api'
 import { AppLayout } from '../layouts/AppLayout'
@@ -11,7 +11,7 @@ import type { ExtractedInvoiceData } from '../types'
 export default function NewInvoice() {
   const navigate = useNavigate()
   const router = useRouter()
-  const { draftForm, setExtractedData, clearInvoiceFlow } = useAppStore()
+  const { draftForm, setExtractedData, clearInvoiceFlow, initBlankDraft } = useAppStore()
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,7 +42,7 @@ export default function NewInvoice() {
 
         <h1 className="text-2xl font-bold text-[#1A1A1A] mb-2">New Invoice</h1>
         <p className="text-[#888] text-sm mb-8">
-          Snap a photo of your notes — AI handles the rest.
+          Choose how you'd like to create your invoice.
         </p>
 
         {draftForm && (
@@ -67,6 +67,23 @@ export default function NewInvoice() {
             onCapture={(file) => handleProcess(file, 'image')}
             isLoading={isProcessing}
           />
+
+          <button
+            onClick={() => {
+              initBlankDraft()
+              navigate({ to: '/invoice/review' })
+            }}
+            disabled={isProcessing}
+            className="w-full p-5 bg-white border border-[#E8E8E8] rounded-3xl flex items-center gap-4 text-left active:scale-[0.98] transition disabled:opacity-40"
+          >
+            <div className="w-12 h-12 bg-[#F5F5F5] rounded-2xl flex items-center justify-center flex-shrink-0">
+              <PenLine className="w-6 h-6 text-[#555]" />
+            </div>
+            <div>
+              <p className="font-semibold text-[#1A1A1A]">Enter Manually</p>
+              <p className="text-sm text-[#888] mt-0.5">Type in client, items, and amounts</p>
+            </div>
+          </button>
         </div>
 
         <AnimatePresence>

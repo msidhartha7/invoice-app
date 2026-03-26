@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
+import { formatAmount } from '../lib/currency'
 import type { Invoice } from '../types'
 
 const STATUS: Record<Invoice['status'], string> = {
@@ -7,7 +8,7 @@ const STATUS: Record<Invoice['status'], string> = {
   paid: 'bg-green-100 text-green-600',
 }
 
-export function InvoiceCard({ invoice }: { invoice: Invoice }) {
+export function InvoiceCard({ invoice, currency = 'USD' }: { invoice: Invoice; currency?: string }) {
   const navigate = useNavigate()
   const date = new Date(invoice.created_at).toLocaleDateString('en-US', {
     month: 'short',
@@ -27,7 +28,7 @@ export function InvoiceCard({ invoice }: { invoice: Invoice }) {
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
           <span className="text-base font-bold text-[#1A1A1A]">
-            ${invoice.total_amount.toFixed(2)}
+            {formatAmount(invoice.total_amount, currency)}
           </span>
           <span
             className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS[invoice.status]}`}

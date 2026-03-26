@@ -24,6 +24,7 @@ interface AppState {
   setDraftForm: (form: DraftForm) => void
   setEditingInvoiceId: (id: string | null) => void
   initDraftFromExtracted: () => void
+  initBlankDraft: () => void
   clearInvoiceFlow: () => void
 }
 
@@ -56,6 +57,19 @@ export const useAppStore = create<AppState>()(
               deliveryFee: state.extractedData.delivery_fee ?? 0,
             },
           }
+        }),
+      initBlankDraft: () =>
+        set({
+          extractedData: null,
+          editingInvoiceId: null,
+          draftForm: {
+            clientName: '',
+            projectName: '',
+            items: [{ id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, amount: 0 }],
+            discountType: 'percentage',
+            discountValue: 0,
+            deliveryFee: 0,
+          },
         }),
       clearInvoiceFlow: () =>
         set({ extractedData: null, currentInvoice: null, draftForm: null, editingInvoiceId: null }),
