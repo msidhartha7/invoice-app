@@ -39,7 +39,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col justify-center px-6">
+    <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col">
+      <div className="h-[3px] bg-[#6C47FF]" />
+      <div className="flex-1 flex flex-col justify-center px-6">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -48,10 +50,10 @@ export default function Login() {
       >
         <div className="mb-10">
           <div className="w-12 h-12 bg-[#6C47FF] rounded-2xl flex items-center justify-center mb-6">
-            <span className="text-white font-bold text-xl select-none">N</span>
+            <span className="text-white font-bold text-xl select-none">I</span>
           </div>
           <h1 className="text-3xl font-bold text-[#1A1A1A] leading-tight">
-            The Niche Invoice
+            The Invoice App
           </h1>
           <p className="text-[#888] mt-2 text-base">
             Invoicing built for creative freelancers.
@@ -151,6 +153,7 @@ export default function Login() {
           No password. No spam. Ever.
         </p>
       </motion.div>
+      </div>
     </div>
   )
 }

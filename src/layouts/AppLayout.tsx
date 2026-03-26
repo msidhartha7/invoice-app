@@ -44,6 +44,7 @@ export function AppLayout({ children, bottomBar, onRefresh }: AppLayoutProps) {
 
   return (
     <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col max-w-md mx-auto relative">
+      <div className="h-[3px] bg-[#6C47FF] flex-shrink-0" />
       <AnimatePresence mode="wait">
         <motion.main
           ref={scrollRef}

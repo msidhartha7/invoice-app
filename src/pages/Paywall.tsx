@@ -45,7 +45,9 @@ export default function Paywall() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col justify-center px-6 py-12">
+    <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col">
+      <div className="h-[3px] bg-[#6C47FF]" />
+    <div className="flex-1 flex flex-col justify-center px-6 py-12">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -58,7 +60,7 @@ export default function Paywall() {
             One flat price. No surprises.
           </div>
           <h1 className="text-3xl font-bold text-[#1A1A1A]">
-            Unlock The Niche Invoice
+            Unlock The Invoice App
           </h1>
           <p className="text-[#888] mt-2">
             Send professional invoices in under 60 seconds.
@@ -121,6 +123,7 @@ export default function Paywall() {
           Sign out
         </button>
       </motion.div>
+    </div>
     </div>
   )
 }
