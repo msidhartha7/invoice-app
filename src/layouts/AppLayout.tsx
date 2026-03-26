@@ -69,6 +69,9 @@ export function AppLayout({ children, bottomBar, onRefresh }: AppLayoutProps) {
           )}
           <div style={{ transform: pullY > 0 ? `translateY(${pullY}px)` : undefined, transition: pullY === 0 ? 'transform 0.2s ease' : undefined }}>
             {children}
+            <p className="text-center text-[10px] text-[#CCC] pb-6 pt-4 select-none tracking-wide">
+              The Invoice App
+            </p>
           </div>
         </motion.main>
       </AnimatePresence>
