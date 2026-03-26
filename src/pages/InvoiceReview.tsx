@@ -6,6 +6,7 @@ import { supabase, getValidSession } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AppLayout } from '../layouts/AppLayout'
 import { useAppStore } from '../store/appStore'
+import { currencySymbol, formatAmount } from '../lib/currency'
 import type { Invoice, LineItem } from '../types'
 
 export default function InvoiceReview() {
@@ -26,6 +27,7 @@ export default function InvoiceReview() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDeliveryFee, setShowDeliveryFee] = useState(false)
+  const [showDiscount, setShowDiscount] = useState(false)
   const [error, setError] = useState('')
   const [touched, setTouched] = useState<Set<string>>(new Set())
   const savedInvoiceRef = useRef<Invoice | null>(null)
@@ -38,16 +40,31 @@ export default function InvoiceReview() {
     if ((draftForm?.deliveryFee ?? 0) > 0) setShowDeliveryFee(true)
   }, [draftForm?.deliveryFee])
 
+  useEffect(() => {
+    if ((draftForm?.discountValue ?? 0) > 0) setShowDiscount(true)
+  }, [draftForm?.discountValue])
+
   if (!extractedData && !draftForm) return <Navigate to="/invoice/new" />
 
   const clientName = draftForm?.clientName ?? ''
   const projectName = draftForm?.projectName ?? ''
   const items = draftForm?.items ?? []
   const deliveryFee = draftForm?.deliveryFee ?? 0
+  const discountType = draftForm?.discountType ?? 'percentage'
+  const discountValue = draftForm?.discountValue ?? 0
   const taxRate = profile?.tax_rate ?? 0
+  const currency = profile?.currency ?? 'USD'
+  const sym = currencySymbol(currency)
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.amount || 0), 0), [items])
-  const taxAmount = useMemo(() => subtotal * (taxRate / 100), [subtotal, taxRate])
-  const total = useMemo(() => subtotal + taxAmount + deliveryFee, [subtotal, taxAmount, deliveryFee])
+  const discountAmount = useMemo(
+    () => discountValue > 0
+      ? discountType === 'percentage' ? subtotal * (discountValue / 100) : Math.min(discountValue, subtotal)
+      : 0,
+    [subtotal, discountType, discountValue],
+  )
+  const afterDiscount = useMemo(() => subtotal - discountAmount, [subtotal, discountAmount])
+  const taxAmount = useMemo(() => afterDiscount * (taxRate / 100), [afterDiscount, taxRate])
+  const total = useMemo(() => afterDiscount + taxAmount + deliveryFee, [afterDiscount, taxAmount, deliveryFee])
 
   function markTouched(field: string) {
     setTouched((prev) => new Set(prev).add(field))
@@ -66,6 +83,11 @@ export default function InvoiceReview() {
   function setDeliveryFee(fee: number) {
     if (!draftForm) return
     setDraftForm({ ...draftForm, deliveryFee: fee })
+  }
+
+  function setDiscount(type: 'percentage' | 'fixed', value: number) {
+    if (!draftForm) return
+    setDraftForm({ ...draftForm, discountType: type, discountValue: value })
   }
 
   function updateItems(updater: (prev: LineItem[]) => LineItem[]) {
@@ -159,6 +181,8 @@ export default function InvoiceReview() {
             project_name: projectName.trim() || null,
             items,
             total_amount: total,
+            discount_type: discountValue > 0 ? discountType : null,
+            discount_value: discountValue,
             delivery_fee: deliveryFee,
           })
           .eq('id', editingInvoiceId)
@@ -181,6 +205,8 @@ export default function InvoiceReview() {
             project_name: projectName.trim() || null,
             items,
             total_amount: total,
+            discount_type: discountValue > 0 ? discountType : null,
+            discount_value: discountValue,
             delivery_fee: deliveryFee,
             status: 'draft',
           })
@@ -260,9 +286,9 @@ export default function InvoiceReview() {
         {isSaving ? (
           <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
         ) : editingInvoiceId ? (
-          `Save Changes · $${total.toFixed(2)}`
+          `Save Changes · ${formatAmount(total, currency)}`
         ) : (
-          `Save & Send · $${total.toFixed(2)}`
+          `Save & Send · ${formatAmount(total, currency)}`
         )}
       </button>
     </>
@@ -386,7 +412,7 @@ export default function InvoiceReview() {
                     />
                   </div>
                   <div>
-                    <p className="text-xs text-[#AAA] mb-1">Rate ($)</p>
+                    <p className="text-xs text-[#AAA] mb-1">Rate ({sym})</p>
                     <input
                       type="number"
                       value={item.rate}
@@ -400,7 +426,7 @@ export default function InvoiceReview() {
                   <div>
                     <p className="text-xs text-[#AAA] mb-1">Amount</p>
                     <p className="h-9 flex items-center text-sm font-semibold text-[#1A1A1A] pl-1">
-                      ${item.amount.toFixed(2)}
+                      {formatAmount(item.amount, currency)}
                     </p>
                   </div>
                 </div>
@@ -412,19 +438,66 @@ export default function InvoiceReview() {
         <div className="bg-[#6C47FF]/5 rounded-3xl p-5 mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-[#888]">Subtotal</span>
-            <span className="text-sm text-[#1A1A1A]">${subtotal.toFixed(2)}</span>
+            <span className="text-sm text-[#1A1A1A]">{formatAmount(subtotal, currency)}</span>
           </div>
+
+          {/* Discount */}
+          {showDiscount ? (
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setDiscount('percentage', discountValue)}
+                  className={`text-xs px-2 py-0.5 rounded-full transition ${discountType === 'percentage' ? 'bg-[#6C47FF] text-white' : 'text-[#888] hover:text-[#6C47FF]'}`}
+                >%</button>
+                <button
+                  onClick={() => setDiscount('fixed', discountValue)}
+                  className={`text-xs px-2 py-0.5 rounded-full transition ${discountType === 'fixed' ? 'bg-[#6C47FF] text-white' : 'text-[#888] hover:text-[#6C47FF]'}`}
+                >{sym}</button>
+                <span className="text-sm text-[#888]">Discount</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={discountValue || ''}
+                  onChange={(e) => setDiscount(discountType, parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  max={discountType === 'percentage' ? 100 : undefined}
+                  step="0.01"
+                  autoFocus
+                  className="w-16 text-sm text-right text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#CCC]"
+                />
+                {discountAmount > 0 && (
+                  <span className="text-xs text-[#6C47FF]">−{formatAmount(discountAmount, currency)}</span>
+                )}
+                <button
+                  onClick={() => { setDiscount('percentage', 0); setShowDiscount(false) }}
+                  className="text-[#CCC] hover:text-red-400 transition ml-1 text-xs leading-none"
+                  aria-label="Remove discount"
+                >✕</button>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-2">
+              <button
+                onClick={() => setShowDiscount(true)}
+                className="text-xs text-[#6C47FF]/60 hover:text-[#6C47FF] transition"
+              >+ Add discount</button>
+            </div>
+          )}
+
           {taxRate > 0 && (
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-[#888]">Tax ({taxRate}%)</span>
-              <span className="text-sm text-[#1A1A1A]">${taxAmount.toFixed(2)}</span>
+              <span className="text-sm text-[#1A1A1A]">{formatAmount(taxAmount, currency)}</span>
             </div>
           )}
+
           {showDeliveryFee ? (
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <label className="text-sm text-[#888]">Delivery Fee</label>
               <div className="flex items-center gap-1">
-                <span className="text-sm text-[#888]">$</span>
+                <span className="text-sm text-[#888]">{sym}</span>
                 <input
                   type="number"
                   value={deliveryFee || ''}
@@ -432,7 +505,6 @@ export default function InvoiceReview() {
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  autoFocus
                   className="w-20 text-sm text-right text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#CCC]"
                 />
                 <button
@@ -443,18 +515,17 @@ export default function InvoiceReview() {
               </div>
             </div>
           ) : (
-            <div className="mb-3">
+            <div className="mb-2">
               <button
                 onClick={() => setShowDeliveryFee(true)}
                 className="text-xs text-[#6C47FF]/60 hover:text-[#6C47FF] transition"
-              >
-                + Add delivery fee
-              </button>
+              >+ Add delivery fee</button>
             </div>
           )}
+
           <div className="border-t border-[#6C47FF]/20 pt-3 flex items-center justify-between">
             <span className="font-semibold text-[#1A1A1A]">Total</span>
-            <span className="text-2xl font-bold text-[#6C47FF]">${total.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-[#6C47FF]">{formatAmount(total, currency)}</span>
           </div>
         </div>
 

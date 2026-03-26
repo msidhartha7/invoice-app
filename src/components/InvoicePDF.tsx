@@ -1,17 +1,7 @@
 import { Document, Page, Text, View } from '@react-pdf/renderer'
 import type { Style } from '@react-pdf/types'
 import type { Invoice, Profile } from '../types'
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', AUD: 'A$',
-  INR: '₹', JPY: '¥', CHF: 'CHF ', SGD: 'S$', HKD: 'HK$',
-  NZD: 'NZ$', MXN: 'MX$', BRL: 'R$', ZAR: 'R', AED: 'AED ',
-  SEK: 'kr', NOK: 'kr', DKK: 'kr', KRW: '₩', THB: '฿',
-}
-
-function sym(currency: string) {
-  return CURRENCY_SYMBOLS[currency] ?? `${currency} `
-}
+import { formatAmount } from '../lib/currency'
 
 // Plain objects — no StyleSheet.create() to avoid registry ID mismatch
 // when Vite bundles multiple copies of @react-pdf/renderer
@@ -124,8 +114,8 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
   })
 
   const currency = profile?.currency ?? 'USD'
-  const currencySymbol = sym(currency)
   const businessName = profile?.business_name ?? 'My Business'
+  const fmt = (n: number) => formatAmount(n, currency)
 
   const addressParts = [
     profile?.address_line1,
@@ -182,34 +172,47 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
             <Text style={colDesc}>{item.description}</Text>
             <Text style={colSize}>{item.size ?? ''}</Text>
             <Text style={colQty}>{String(item.quantity)}</Text>
-            <Text style={colRate}>{`${currencySymbol}${item.rate.toFixed(2)}`}</Text>
-            <Text style={colAmt}>{`${currencySymbol}${item.amount.toFixed(2)}`}</Text>
+            <Text style={colRate}>{fmt(item.rate)}</Text>
+            <Text style={colAmt}>{fmt(item.amount)}</Text>
           </View>
         ))}
 
         {(() => {
           const subtotal = invoice.items.reduce((sum, i) => sum + (i.amount || 0), 0)
+          const discountValue = invoice.discount_value ?? 0
+          const discountType = invoice.discount_type
+          const discountAmount = discountValue > 0 && discountType
+            ? discountType === 'percentage' ? subtotal * (discountValue / 100) : Math.min(discountValue, subtotal)
+            : 0
+          const afterDiscount = subtotal - discountAmount
           const taxRate = profile?.tax_rate ?? 0
-          const taxAmount = subtotal * (taxRate / 100)
+          const taxAmount = afterDiscount * (taxRate / 100)
           const deliveryFee = invoice.delivery_fee ?? 0
+          const hasExtras = discountAmount > 0 || taxRate > 0 || deliveryFee > 0
           return (
             <>
-              {(taxRate > 0 || deliveryFee > 0) ? (
+              {hasExtras ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
                   <Text style={s.taxLabel}>Subtotal</Text>
-                  <Text style={s.taxValue}>{`${currencySymbol}${subtotal.toFixed(2)}`}</Text>
+                  <Text style={s.taxValue}>{fmt(subtotal)}</Text>
+                </View>
+              ) : null}
+              {discountAmount > 0 ? (
+                <View style={s.taxRow}>
+                  <Text style={s.taxLabel}>{discountType === 'percentage' ? `Discount (${discountValue}%)` : 'Discount'}</Text>
+                  <Text style={{ ...s.taxValue, color: '#16a34a' }}>{`-${fmt(discountAmount)}`}</Text>
                 </View>
               ) : null}
               {taxRate > 0 ? (
                 <View style={s.taxRow}>
                   <Text style={s.taxLabel}>{`Tax (${taxRate}%)`}</Text>
-                  <Text style={s.taxValue}>{`${currencySymbol}${taxAmount.toFixed(2)}`}</Text>
+                  <Text style={s.taxValue}>{fmt(taxAmount)}</Text>
                 </View>
               ) : null}
               {deliveryFee > 0 ? (
                 <View style={s.taxRow}>
                   <Text style={s.taxLabel}>Delivery Fee</Text>
-                  <Text style={s.taxValue}>{`${currencySymbol}${deliveryFee.toFixed(2)}`}</Text>
+                  <Text style={s.taxValue}>{fmt(deliveryFee)}</Text>
                 </View>
               ) : null}
             </>
@@ -218,7 +221,7 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
 
         <View style={s.totalRow}>
           <Text style={s.totalLabel}>TOTAL DUE</Text>
-          <Text style={s.totalValue}>{`${currencySymbol}${invoice.total_amount.toFixed(2)}`}</Text>
+          <Text style={s.totalValue}>{fmt(invoice.total_amount)}</Text>
         </View>
 
         {profile?.tax_id ? (

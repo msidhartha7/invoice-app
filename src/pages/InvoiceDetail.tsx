@@ -7,6 +7,7 @@ import { AppLayout } from '../layouts/AppLayout'
 import { downloadInvoicePDF } from '../lib/pdf'
 import { useAuth } from '../contexts/AuthContext'
 import { useAppStore } from '../store/appStore'
+import { formatAmount } from '../lib/currency'
 
 const routeApi = getRouteApi('/authenticated/invoice/$invoiceId')
 
@@ -68,6 +69,8 @@ export default function InvoiceDetail() {
       clientName: invoice.client_name,
       projectName: invoice.project_name ?? '',
       items: invoice.items,
+      discountType: invoice.discount_type ?? 'percentage',
+      discountValue: invoice.discount_value ?? 0,
       deliveryFee: invoice.delivery_fee ?? 0,
     })
     setEditingInvoiceId(invoice.id)
@@ -131,11 +134,11 @@ export default function InvoiceDetail() {
                         <p className="text-xs text-[#888] mt-0.5">{item.size}</p>
                       )}
                       <p className="text-xs text-[#AAA] mt-0.5">
-                        {item.quantity} × ${item.rate.toFixed(2)}
+                        {item.quantity} × {formatAmount(item.rate, profile?.currency ?? 'USD')}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-[#1A1A1A] flex-shrink-0">
-                      ${item.amount.toFixed(2)}
+                      {formatAmount(item.amount, profile?.currency ?? 'USD')}
                     </p>
                   </div>
                 ))}
@@ -143,33 +146,49 @@ export default function InvoiceDetail() {
             </div>
             <div className="border-t border-[#E8E8E8] px-5 py-4 flex flex-col gap-1.5">
               {(() => {
+                const cur = profile?.currency ?? 'USD'
                 const subtotal = invoice.items.reduce((s, i) => s + (i.amount || 0), 0)
+                const discountValue = invoice.discount_value ?? 0
+                const discountType = invoice.discount_type
+                const discountAmount = discountValue > 0 && discountType
+                  ? discountType === 'percentage' ? subtotal * (discountValue / 100) : Math.min(discountValue, subtotal)
+                  : 0
+                const afterDiscount = subtotal - discountAmount
                 const taxRate = profile?.tax_rate ?? 0
-                const taxAmount = subtotal * (taxRate / 100)
+                const taxAmount = afterDiscount * (taxRate / 100)
                 const deliveryFee = invoice.delivery_fee ?? 0
+                const hasExtras = discountAmount > 0 || taxRate > 0 || deliveryFee > 0
                 return (
                   <>
-                    {(taxRate > 0 || deliveryFee > 0) && (
+                    {hasExtras && (
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-[#AAA]">Subtotal</p>
-                        <p className="text-xs text-[#888]">${subtotal.toFixed(2)}</p>
+                        <p className="text-xs text-[#888]">{formatAmount(subtotal, cur)}</p>
+                      </div>
+                    )}
+                    {discountAmount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-[#AAA]">
+                          Discount{discountType === 'percentage' ? ` (${discountValue}%)` : ''}
+                        </p>
+                        <p className="text-xs text-green-600">−{formatAmount(discountAmount, cur)}</p>
                       </div>
                     )}
                     {taxRate > 0 && (
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-[#AAA]">Tax ({taxRate}%)</p>
-                        <p className="text-xs text-[#888]">${taxAmount.toFixed(2)}</p>
+                        <p className="text-xs text-[#888]">{formatAmount(taxAmount, cur)}</p>
                       </div>
                     )}
                     {deliveryFee > 0 && (
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-[#AAA]">Delivery Fee</p>
-                        <p className="text-xs text-[#888]">${deliveryFee.toFixed(2)}</p>
+                        <p className="text-xs text-[#888]">{formatAmount(deliveryFee, cur)}</p>
                       </div>
                     )}
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-sm font-semibold text-[#888]">Total</p>
-                      <p className="text-lg font-bold text-[#1A1A1A]">${invoice.total_amount.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-[#1A1A1A]">{formatAmount(invoice.total_amount, cur)}</p>
                     </div>
                   </>
                 )

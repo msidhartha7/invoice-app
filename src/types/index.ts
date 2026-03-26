@@ -34,6 +34,8 @@ export interface Invoice {
   project_name: string | null
   items: LineItem[]
   total_amount: number
+  discount_type: 'percentage' | 'fixed' | null
+  discount_value: number
   delivery_fee: number
   status: 'draft' | 'sent' | 'paid'
   payment_link: string | null

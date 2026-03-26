@@ -6,6 +6,8 @@ export interface DraftForm {
   clientName: string
   projectName: string
   items: LineItem[]
+  discountType: 'percentage' | 'fixed'
+  discountValue: number
   deliveryFee: number
 }
 
@@ -49,6 +51,8 @@ export const useAppStore = create<AppState>()(
                 id: item.id ?? crypto.randomUUID(),
                 quantity: item.quantity || 1,
               })),
+              discountType: 'percentage',
+              discountValue: 0,
               deliveryFee: state.extractedData.delivery_fee ?? 0,
             },
           }
