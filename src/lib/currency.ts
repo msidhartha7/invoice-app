@@ -1,8 +1,8 @@
 const SYMBOLS: Record<string, string> = {
   USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', AUD: 'A$',
-  INR: '₹', JPY: '¥', CHF: 'CHF ', SGD: 'S$', HKD: 'HK$',
+  INR: 'Rs. ', JPY: '¥', CHF: 'CHF ', SGD: 'S$', HKD: 'HK$',
   NZD: 'NZ$', MXN: 'MX$', BRL: 'R$', ZAR: 'R', AED: 'AED ',
-  SEK: 'kr', NOK: 'kr', DKK: 'kr', KRW: '₩', THB: '฿',
+  SEK: 'kr', NOK: 'kr', DKK: 'kr', KRW: 'KRW ', THB: 'THB ',
 }
 
 export function currencySymbol(currency: string): string {
