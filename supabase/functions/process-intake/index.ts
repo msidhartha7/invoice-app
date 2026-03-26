@@ -109,7 +109,7 @@ serve(async (req) => {
                 { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
                 {
                   type: 'text',
-                  text: 'Extract invoice/bill data. Return ONLY valid JSON with: client_name (string), project_name (string or null), items (array of {description, size, quantity, rate, amount} where size is a size/spec string like "2x4x10\'" or empty string), delivery_fee (number, 0 if none), total (number including all charges). No markdown.',
+                  text: 'Extract invoice/bill data from this image. Return ONLY valid JSON (no markdown) with these fields: client_name (string), project_name (string or null), items (array of {description, size, quantity, rate, amount} — size is a dimension/spec string like "2x4x10\'" or ""), delivery_fee (number — look for labels like "Delivery", "Freight", "Shipping", "Carriage", "Haulage"; use 0 if absent), total (final total number after all charges). Do not include tax_rate — skip it entirely.',
                 },
               ],
             },
@@ -182,7 +182,7 @@ serve(async (req) => {
             {
               role: 'system',
               content:
-                'Extract invoice/bill data from voice transcripts. Return ONLY valid JSON with: client_name (string), project_name (string or null), items (array of {description, size, quantity, rate, amount} where size is a size/spec string or empty string), delivery_fee (number, 0 if none), total (number including all charges).',
+                'Extract invoice/bill data from voice transcripts. Return ONLY valid JSON with: client_name (string), project_name (string or null), items (array of {description, size, quantity, rate, amount} — size is a dimension/spec or ""), delivery_fee (number — any mention of delivery, freight, shipping, or carriage charge; 0 if none), total (final total including all charges). Do not include tax_rate.',
             },
             { role: 'user', content: transcript },
           ],

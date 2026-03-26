@@ -25,6 +25,7 @@ export default function InvoiceReview() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeliveryFee, setShowDeliveryFee] = useState(false)
   const [error, setError] = useState('')
   const [touched, setTouched] = useState<Set<string>>(new Set())
   const savedInvoiceRef = useRef<Invoice | null>(null)
@@ -32,6 +33,10 @@ export default function InvoiceReview() {
   useEffect(() => {
     initDraftFromExtracted()
   }, [initDraftFromExtracted])
+
+  useEffect(() => {
+    if ((draftForm?.deliveryFee ?? 0) > 0) setShowDeliveryFee(true)
+  }, [draftForm?.deliveryFee])
 
   if (!extractedData && !draftForm) return <Navigate to="/invoice/new" />
 
@@ -208,11 +213,14 @@ export default function InvoiceReview() {
       const message = (err as Error).message || 'Failed to save invoice'
       console.error('[InvoiceReview] handleSave: caught error, savedInvoice=', !!savedInvoiceRef.current, 'message=', message)
       if (savedInvoiceRef.current) {
-        setError(`Invoice saved, but payment link creation failed. ${message}`)
+        // Invoice was saved as draft but payment link failed — redirect to detail page to avoid duplicate on retry
+        const invoiceId = savedInvoiceRef.current.id
+        clearInvoiceFlow()
+        navigate({ to: '/invoice/$invoiceId', params: { invoiceId } })
       } else {
         setError(message)
+        setIsSaving(false)
       }
-      setIsSaving(false)
     }
   }
 
@@ -235,30 +243,6 @@ export default function InvoiceReview() {
     }
   }
 
-  async function handleRetryPaymentLink() {
-    if (!savedInvoiceRef.current) return
-    setIsSaving(true)
-    setError('')
-
-    try {
-      const paymentLink = await createPaymentLink(savedInvoiceRef.current)
-      const sentInvoice: Invoice = {
-        ...savedInvoiceRef.current,
-        payment_link: paymentLink,
-        status: 'sent',
-      }
-      setCurrentInvoice(sentInvoice)
-      clearInvoiceFlow()
-      useAppStore.getState().setCurrentInvoice(sentInvoice)
-      navigate({ to: '/invoice/sent' })
-    } catch (err) {
-      setError(
-        `Invoice saved, but payment link creation failed. ${(err as Error).message || 'Please try again.'}`,
-      )
-      setIsSaving(false)
-    }
-  }
-
   const isDisabled = isSaving || !clientName.trim() || items.length === 0 || total <= 0
 
   const bottomBar = (
@@ -269,7 +253,7 @@ export default function InvoiceReview() {
         </p>
       )}
       <button
-        onClick={!editingInvoiceId && savedInvoiceRef.current ? handleRetryPaymentLink : handleSave}
+        onClick={handleSave}
         disabled={isDisabled}
         className="w-full h-[56px] bg-[#6C47FF] text-white font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
       >
@@ -277,8 +261,6 @@ export default function InvoiceReview() {
           <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
         ) : editingInvoiceId ? (
           `Save Changes · $${total.toFixed(2)}`
-        ) : savedInvoiceRef.current ? (
-          'Retry Payment Link'
         ) : (
           `Save & Send · $${total.toFixed(2)}`
         )}
@@ -320,7 +302,7 @@ export default function InvoiceReview() {
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
             onBlur={() => markTouched('clientName')}
-            placeholder="Client name"
+            placeholder="John Doe"
             className="w-full h-[56px] px-4 rounded-2xl border border-[#E8E8E8] bg-white text-[#1A1A1A] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#6C47FF]/30 focus:border-[#6C47FF] transition"
           />
           {touched.has('clientName') && !clientName.trim() && (
@@ -438,21 +420,38 @@ export default function InvoiceReview() {
               <span className="text-sm text-[#1A1A1A]">${taxAmount.toFixed(2)}</span>
             </div>
           )}
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-sm text-[#888]">Delivery Fee</label>
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-[#888]">$</span>
-              <input
-                type="number"
-                value={deliveryFee || ''}
-                onChange={(e) => setDeliveryFee(parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className="w-20 text-sm text-right text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#CCC]"
-              />
+          {showDeliveryFee ? (
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm text-[#888]">Delivery Fee</label>
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-[#888]">$</span>
+                <input
+                  type="number"
+                  value={deliveryFee || ''}
+                  onChange={(e) => setDeliveryFee(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  autoFocus
+                  className="w-20 text-sm text-right text-[#1A1A1A] bg-transparent focus:outline-none placeholder-[#CCC]"
+                />
+                <button
+                  onClick={() => { setDeliveryFee(0); setShowDeliveryFee(false) }}
+                  className="text-[#CCC] hover:text-red-400 transition ml-1 text-xs leading-none"
+                  aria-label="Remove delivery fee"
+                >✕</button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mb-3">
+              <button
+                onClick={() => setShowDeliveryFee(true)}
+                className="text-xs text-[#6C47FF]/60 hover:text-[#6C47FF] transition"
+              >
+                + Add delivery fee
+              </button>
+            </div>
+          )}
           <div className="border-t border-[#6C47FF]/20 pt-3 flex items-center justify-between">
             <span className="font-semibold text-[#1A1A1A]">Total</span>
             <span className="text-2xl font-bold text-[#6C47FF]">${total.toFixed(2)}</span>
@@ -460,14 +459,8 @@ export default function InvoiceReview() {
         </div>
 
         {error && (
-          <div
-            className={`rounded-2xl p-4 ${savedInvoiceRef.current ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'}`}
-          >
-            <p
-              className={`text-sm ${savedInvoiceRef.current ? 'text-amber-700' : 'text-red-600'}`}
-            >
-              {error}
-            </p>
+          <div className="rounded-2xl p-4 bg-red-50 border border-red-200">
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
       </div>

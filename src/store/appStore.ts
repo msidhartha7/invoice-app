@@ -42,11 +42,12 @@ export const useAppStore = create<AppState>()(
           if (state.draftForm || !state.extractedData) return state
           return {
             draftForm: {
-              clientName: state.extractedData.client_name,
+              clientName: state.extractedData.client_name || 'John Doe',
               projectName: state.extractedData.project_name ?? '',
               items: state.extractedData.items.map((item) => ({
                 ...item,
                 id: item.id ?? crypto.randomUUID(),
+                quantity: item.quantity || 1,
               })),
               deliveryFee: state.extractedData.delivery_fee ?? 0,
             },
