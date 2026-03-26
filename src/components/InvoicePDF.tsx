@@ -1,105 +1,8 @@
 import { Document, Page, Text, View } from '@react-pdf/renderer'
-import type { Style } from '@react-pdf/types'
 import type { Invoice, Profile } from '../types'
 import { formatAmount } from '../lib/currency'
 
-// Plain objects — no StyleSheet.create() to avoid registry ID mismatch
-// when Vite bundles multiple copies of @react-pdf/renderer
-const s: Record<string, Style> = {
-  page: { padding: 48, backgroundColor: '#FFFFFF', fontFamily: 'Helvetica' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
-  brandName: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
-  brandMeta: { fontSize: 9, color: '#888888', marginTop: 3, lineHeight: 1.5 },
-  badge: {
-    backgroundColor: '#6C47FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  badgeText: { color: '#FFFFFF', fontSize: 10, fontFamily: 'Helvetica-Bold' },
-  sectionLabel: {
-    fontSize: 8,
-    color: '#888888',
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  clientBlock: { marginBottom: 36 },
-  clientName: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
-  tableHead: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
-    paddingBottom: 8,
-    marginBottom: 4,
-  },
-  tableHeadText: {
-    fontSize: 8,
-    color: '#888888',
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  row: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  cell: { fontSize: 11, color: '#1A1A1A' },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: '#1A1A1A',
-  },
-  totalLabel: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' },
-  totalValue: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#6C47FF' },
-  taxRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  taxLabel: { fontSize: 9, color: '#888888' },
-  taxValue: { fontSize: 9, color: '#888888' },
-  payBlock: {
-    marginTop: 36,
-    backgroundColor: '#F5F3FF',
-    padding: 14,
-    borderRadius: 10,
-  },
-  payLabel: {
-    fontSize: 8,
-    color: '#6C47FF',
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 5,
-  },
-  payLink: { fontSize: 10, color: '#1A1A1A' },
-  footer: {
-    position: 'absolute',
-    bottom: 28,
-    left: 48,
-    right: 48,
-    textAlign: 'center',
-    fontSize: 8,
-    color: '#BBBBBB',
-  },
-}
-
-// Pre-merged column styles to avoid style arrays entirely
-const colDesc: Style = { ...s.cell, flex: 3 }
-const colSize: Style = { ...s.cell, flex: 1.5, color: '#888888', fontSize: 10 }
-const colQty: Style = { ...s.cell, flex: 1, textAlign: 'right' }
-const colRate: Style = { ...s.cell, flex: 1.5, textAlign: 'right' }
-const colAmt: Style = { ...s.cell, flex: 1.5, textAlign: 'right' }
-const thDesc: Style = { ...s.tableHeadText, flex: 3 }
-const thSize: Style = { ...s.tableHeadText, flex: 1.5 }
-const thQty: Style = { ...s.tableHeadText, flex: 1, textAlign: 'right' }
-const thRate: Style = { ...s.tableHeadText, flex: 1.5, textAlign: 'right' }
-const thAmt: Style = { ...s.tableHeadText, flex: 1.5, textAlign: 'right' }
-const brandMetaRight: Style = { ...s.brandMeta, marginTop: 8, textAlign: 'right' }
+const A4_HEIGHT = 841.89
 
 interface InvoicePDFProps {
   invoice: Invoice
@@ -130,115 +33,197 @@ export function InvoicePDF({ invoice, profile }: InvoicePDFProps) {
     profile?.website,
   ].filter(Boolean) as string[]
 
+  const subtotal = invoice.items.reduce((sum, i) => sum + (i.amount || 0), 0)
+  const discountValue = invoice.discount_value ?? 0
+  const discountType = invoice.discount_type
+  const discountAmount =
+    discountValue > 0 && discountType
+      ? discountType === 'percentage'
+        ? subtotal * (discountValue / 100)
+        : Math.min(discountValue, subtotal)
+      : 0
+  const afterDiscount = subtotal - discountAmount
+  const taxRate = profile?.tax_rate ?? 0
+  const taxAmount = afterDiscount * (taxRate / 100)
+  const deliveryFee = invoice.delivery_fee ?? 0
+  const hasExtras = discountAmount > 0 || taxRate > 0 || deliveryFee > 0
+
   return (
     <Document>
-      <Page size="A4" style={s.page}>
-        <View style={s.header}>
+      <Page
+        size="A4"
+        style={{
+          paddingTop: 40,
+          paddingBottom: 60,
+          paddingLeft: 52,
+          paddingRight: 40,
+          backgroundColor: '#FFFFFF',
+          fontFamily: 'Helvetica',
+        }}
+      >
+        {/* Blue left strip */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 4,
+            height: A4_HEIGHT,
+            backgroundColor: '#2563EB',
+          }}
+        />
+
+        {/* Header */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
           <View style={{ flex: 1, marginRight: 16 }}>
-            <Text style={s.brandName}>{businessName}</Text>
+            <Text style={{ fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#1A1A1A' }}>
+              {businessName}
+            </Text>
             {addressParts.map((line, i) => (
-              <Text key={i} style={s.brandMeta}>{line}</Text>
+              <Text key={i} style={{ fontSize: 8, color: '#6B7280', marginTop: 2 }}>{line}</Text>
             ))}
             {contactParts.map((line, i) => (
-              <Text key={i} style={s.brandMeta}>{line}</Text>
+              <Text key={i} style={{ fontSize: 8, color: '#6B7280', marginTop: 2 }}>{line}</Text>
             ))}
           </View>
-          <View>
-            <View style={s.badge}>
-              <Text style={s.badgeText}>INVOICE</Text>
-            </View>
-            <Text style={brandMetaRight}>{date}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#9CA3AF' }}>
+              I N V O I C E
+            </Text>
+            <Text style={{ fontSize: 10, color: '#111827', marginTop: 6 }}>{date}</Text>
           </View>
         </View>
 
-        <View style={s.clientBlock}>
-          <Text style={s.sectionLabel}>Bill To</Text>
-          <Text style={s.clientName}>{invoice.client_name}</Text>
+        {/* Divider after header */}
+        <View style={{ height: 0.5, backgroundColor: '#E5E7EB', marginBottom: 20 }} />
+
+        {/* Bill To */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#9CA3AF', marginBottom: 4 }}>
+            B I L L   T O
+          </Text>
+          <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#111827' }}>
+            {invoice.client_name}
+          </Text>
           {invoice.project_name ? (
-            <Text style={{ ...s.brandMeta, marginTop: 4 }}>{invoice.project_name}</Text>
+            <Text style={{ fontSize: 9, color: '#6B7280', marginTop: 2 }}>{invoice.project_name}</Text>
           ) : null}
         </View>
 
-        <View style={s.tableHead}>
-          <Text style={thDesc}>Description</Text>
-          <Text style={thSize}>Size / Spec</Text>
-          <Text style={thQty}>Qty</Text>
-          <Text style={thRate}>Rate</Text>
-          <Text style={thAmt}>Amount</Text>
+        {/* Table header row */}
+        <View
+          style={{
+            flexDirection: 'row',
+            backgroundColor: '#F3F4F6',
+            paddingVertical: 6,
+            paddingHorizontal: 4,
+          }}
+        >
+          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6B7280', width: 200 }}>DESCRIPTION</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6B7280', width: 60 }}>SIZE/SPEC</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6B7280', width: 40, textAlign: 'right' }}>QTY</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6B7280', width: 70, textAlign: 'right' }}>RATE</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6B7280', width: 70, textAlign: 'right' }}>AMOUNT</Text>
         </View>
+        {/* Bottom border under header only */}
+        <View style={{ height: 0.5, backgroundColor: '#E5E7EB' }} />
 
-        {invoice.items.map((item) => (
-          <View key={item.id} style={s.row}>
-            <Text style={colDesc}>{item.description}</Text>
-            <Text style={colSize}>{item.size ?? ''}</Text>
-            <Text style={colQty}>{String(item.quantity)}</Text>
-            <Text style={colRate}>{fmt(item.rate)}</Text>
-            <Text style={colAmt}>{fmt(item.amount)}</Text>
+        {/* Table rows — zebra striped */}
+        {invoice.items.map((item, index) => (
+          <View
+            key={item.id}
+            style={{
+              flexDirection: 'row',
+              backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+              paddingVertical: 6,
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text style={{ fontSize: 9, color: '#374151', width: 200 }}>{item.description}</Text>
+            <Text style={{ fontSize: 9, color: '#374151', width: 60 }}>{item.size ?? ''}</Text>
+            <Text style={{ fontSize: 9, color: '#374151', width: 40, textAlign: 'right' }}>{String(item.quantity)}</Text>
+            <Text style={{ fontSize: 9, color: '#374151', width: 70, textAlign: 'right' }}>{fmt(item.rate)}</Text>
+            <Text style={{ fontSize: 9, color: '#374151', width: 70, textAlign: 'right' }}>{fmt(item.amount)}</Text>
           </View>
         ))}
 
-        {(() => {
-          const subtotal = invoice.items.reduce((sum, i) => sum + (i.amount || 0), 0)
-          const discountValue = invoice.discount_value ?? 0
-          const discountType = invoice.discount_type
-          const discountAmount = discountValue > 0 && discountType
-            ? discountType === 'percentage' ? subtotal * (discountValue / 100) : Math.min(discountValue, subtotal)
-            : 0
-          const afterDiscount = subtotal - discountAmount
-          const taxRate = profile?.tax_rate ?? 0
-          const taxAmount = afterDiscount * (taxRate / 100)
-          const deliveryFee = invoice.delivery_fee ?? 0
-          const hasExtras = discountAmount > 0 || taxRate > 0 || deliveryFee > 0
-          return (
-            <>
-              {hasExtras ? (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-                  <Text style={s.taxLabel}>Subtotal</Text>
-                  <Text style={s.taxValue}>{fmt(subtotal)}</Text>
-                </View>
-              ) : null}
-              {discountAmount > 0 ? (
-                <View style={s.taxRow}>
-                  <Text style={s.taxLabel}>{discountType === 'percentage' ? `Discount (${discountValue}%)` : 'Discount'}</Text>
-                  <Text style={{ ...s.taxValue, color: '#16a34a' }}>{`-${fmt(discountAmount)}`}</Text>
-                </View>
-              ) : null}
-              {taxRate > 0 ? (
-                <View style={s.taxRow}>
-                  <Text style={s.taxLabel}>{`Tax (${taxRate}%)`}</Text>
-                  <Text style={s.taxValue}>{fmt(taxAmount)}</Text>
-                </View>
-              ) : null}
-              {deliveryFee > 0 ? (
-                <View style={s.taxRow}>
-                  <Text style={s.taxLabel}>Delivery Fee</Text>
-                  <Text style={s.taxValue}>{fmt(deliveryFee)}</Text>
-                </View>
-              ) : null}
-            </>
-          )
-        })()}
-
-        <View style={s.totalRow}>
-          <Text style={s.totalLabel}>TOTAL DUE</Text>
-          <Text style={s.totalValue}>{fmt(invoice.total_amount)}</Text>
+        {/* Totals block — right-aligned, ~200pt wide */}
+        <View style={{ alignItems: 'flex-end', marginTop: 16 }}>
+          <View style={{ width: 200 }}>
+            {hasExtras ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                <Text style={{ fontSize: 9, color: '#374151' }}>Subtotal</Text>
+                <Text style={{ fontSize: 9, color: '#374151' }}>{fmt(subtotal)}</Text>
+              </View>
+            ) : null}
+            {discountAmount > 0 ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                <Text style={{ fontSize: 9, color: '#374151' }}>
+                  {discountType === 'percentage' ? `Discount (${discountValue}%)` : 'Discount'}
+                </Text>
+                <Text style={{ fontSize: 9, color: '#16A34A' }}>{`-${fmt(discountAmount)}`}</Text>
+              </View>
+            ) : null}
+            {taxRate > 0 ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                <Text style={{ fontSize: 9, color: '#374151' }}>{`Tax (${taxRate}%)`}</Text>
+                <Text style={{ fontSize: 9, color: '#374151' }}>{fmt(taxAmount)}</Text>
+              </View>
+            ) : null}
+            {deliveryFee > 0 ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                <Text style={{ fontSize: 9, color: '#374151' }}>Delivery Fee</Text>
+                <Text style={{ fontSize: 9, color: '#374151' }}>{fmt(deliveryFee)}</Text>
+              </View>
+            ) : null}
+            {/* Divider above Total Due */}
+            <View style={{ height: 0.5, backgroundColor: '#E5E7EB', marginVertical: 4 }} />
+            {/* Total Due row */}
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: '#EFF6FF',
+                paddingVertical: 4,
+                paddingHorizontal: 4,
+              }}
+            >
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' }}>TOTAL DUE</Text>
+              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#2563EB' }}>
+                {fmt(invoice.total_amount)}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {profile?.tax_id ? (
-          <View style={s.taxRow}>
-            <Text style={s.taxLabel}>Tax ID</Text>
-            <Text style={s.taxValue}>{profile.tax_id}</Text>
-          </View>
-        ) : null}
-
+        {/* Payment link */}
         {invoice.payment_link ? (
-          <View style={s.payBlock}>
-            <Text style={s.payLabel}>Pay Online</Text>
-            <Text style={s.payLink}>{invoice.payment_link}</Text>
+          <View
+            style={{
+              marginTop: 24,
+              backgroundColor: '#EFF6FF',
+              padding: 12,
+              borderRadius: 6,
+            }}
+          >
+            <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#2563EB', marginBottom: 4 }}>
+              P A Y   O N L I N E
+            </Text>
+            <Text style={{ fontSize: 9, color: '#374151' }}>{invoice.payment_link}</Text>
           </View>
         ) : null}
 
-        <Text style={s.footer}>Generated by The Niche Invoice</Text>
+        {/* Footer */}
+        <View style={{ position: 'absolute', bottom: 24, left: 52, right: 40 }}>
+          <View style={{ height: 0.5, backgroundColor: '#E5E7EB', marginBottom: 6 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 8, color: '#9CA3AF' }}>
+              {profile?.tax_id ? `Tax ID: ${profile.tax_id}` : ''}
+            </Text>
+            <Text style={{ fontSize: 8, color: '#9CA3AF' }}>Generated by The Niche Invoice</Text>
+          </View>
+        </View>
       </Page>
     </Document>
   )
