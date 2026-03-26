@@ -57,7 +57,7 @@ function FlashBanner() {
     >
       <span className="w-2 h-2 rounded-full flex-shrink-0 landing-pulse-dot" style={{ background: '#E53E3E' }} aria-hidden />
       <span className="landing-banner-text">
-        Flash Deal — Today Only: $1/month for 3 months &nbsp;·&nbsp; Offer ends at midnight
+        Flash Deal — $1/month for 3 months &nbsp;·&nbsp; Offer ends Monday midnight
       </span>
     </motion.div>
   )
@@ -392,12 +392,15 @@ export default function Landing() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Countdown to midnight
+  // Countdown to Monday midnight
   useEffect(() => {
     const tick = () => {
       const now = new Date()
       const midnight = new Date()
-      midnight.setHours(24, 0, 0, 0)
+      // Advance to the coming Monday (day 1), then set to midnight
+      const daysUntilMonday = (8 - now.getDay()) % 7 || 7
+      midnight.setDate(now.getDate() + daysUntilMonday)
+      midnight.setHours(0, 0, 0, 0)
       let rem = Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000))
       const h = Math.floor(rem / 3600); rem %= 3600
       const m = Math.floor(rem / 60); const s = rem % 60
