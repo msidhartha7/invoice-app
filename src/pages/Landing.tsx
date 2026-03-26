@@ -198,7 +198,7 @@ function PhoneMockup() {
             {/* Screen */}
             <div className="rounded-[38px] overflow-hidden bg-white">
               {/* Status bar */}
-              <div className="flex items-center justify-between px-4 pt-2 pb-1 text-[11px] font-semibold" style={{ color: '#1A1A1A' }} aria-hidden>
+              <div className="flex items-center justify-between px-4 pt-3 pb-1 text-[11px] font-semibold" style={{ color: '#1A1A1A' }} aria-hidden>
                 <span>9:41</span>
                 <div className="flex items-center gap-1">
                   <svg width="14" height="11" viewBox="0 0 16 12" fill="#1A1A1A"><rect x="0" y="8" width="3" height="4" rx="0.5"/><rect x="4.5" y="5" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="10" rx="0.5"/><rect x="13.5" y="0" width="2.5" height="12" rx="0.5" opacity="0.25"/></svg>
@@ -218,7 +218,7 @@ function PhoneMockup() {
                 </div>
               </div>
               {/* Invoice list */}
-              <div className="p-2 flex flex-col gap-1.5" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+              <div className="p-2 pt-3 flex flex-col gap-1.5" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                 {[
                   { name: 'John Davies',      amount: '$652.90',    date: 'Mar 26, 2026' },
                   { name: 'John Davies',      amount: '$652.90',    date: 'Mar 25, 2026' },
@@ -239,7 +239,7 @@ function PhoneMockup() {
                 ))}
               </div>
               {/* New invoice button */}
-              <div className="mx-2 mb-2 text-center text-[13px] font-semibold text-white py-2.5 rounded-[22px]" style={{ background: '#5B4FE8', fontFamily: "'DM Sans', system-ui, sans-serif" }} aria-hidden>
+              <div className="mx-2 mb-6 text-center text-[13px] font-semibold text-white py-2.5 rounded-[22px]" style={{ background: '#5B4FE8', fontFamily: "'DM Sans', system-ui, sans-serif" }} aria-hidden>
                 ＋ New Invoice
               </div>
             </div>
