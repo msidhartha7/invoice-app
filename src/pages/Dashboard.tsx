@@ -1,4 +1,4 @@
-import { useNavigate, getRouteApi } from '@tanstack/react-router'
+import { useNavigate, useRouter, getRouteApi } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Plus, FileText, LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,6 +9,7 @@ const routeApi = getRouteApi('/authenticated/')
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const router = useRouter()
   const { profile, signOut } = useAuth()
   const { invoices } = routeApi.useLoaderData()
 
@@ -23,7 +24,7 @@ export default function Dashboard() {
   )
 
   return (
-    <AppLayout bottomBar={bottomBar}>
+    <AppLayout bottomBar={bottomBar} onRefresh={() => router.invalidate()}>
       <div className="px-6 pt-12 pb-4">
         <div className="flex items-center justify-between mb-8">
           <div>
