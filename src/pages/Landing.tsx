@@ -847,7 +847,7 @@ export default function Landing() {
           <div className="flex gap-14">
             {[
               { heading: 'Product', links: [['Features', '#features'], ['How it works', '#how-it-works'], ['Pricing', '#pricing']] },
-              { heading: 'Legal', links: [['Privacy Policy', 'https://invoice-app.store/privacy'], ['Terms of Service', 'https://invoice-app.store/terms']] },
+              { heading: 'Legal', links: [['Privacy Policy', '/privacy'], ['Terms of Use', '/terms']] },
             ].map(group => (
               <div key={group.heading}>
                 <h4 className="text-[12px] font-bold tracking-[0.1em] uppercase mb-3" style={{ color: 'rgba(255,255,255,0.40)' }}>{group.heading}</h4>

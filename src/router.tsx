@@ -4,6 +4,8 @@ import { _authState, waitForAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
 import type { Invoice } from './types'
 import Landing from './pages/Landing'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfUse from './pages/TermsOfUse'
 import Login from './pages/Login'
 import Paywall from './pages/Paywall'
 import Dashboard from './pages/Dashboard'
@@ -45,6 +47,20 @@ const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/landing',
   component: Landing,
+})
+
+// Public: /privacy
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/privacy',
+  component: PrivacyPolicy,
+})
+
+// Public: /terms
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/terms',
+  component: TermsOfUse,
 })
 
 // Public: /login
@@ -180,6 +196,8 @@ const catchAllRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
+  privacyRoute,
+  termsRoute,
   loginRoute,
   paywallRoute,
   authenticatedRoute.addChildren([
