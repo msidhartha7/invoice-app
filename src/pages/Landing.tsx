@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react'
@@ -7,10 +7,11 @@ import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react'
 
 const ease = [0.16, 1, 0.3, 1] as const
 
-function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
+function Reveal({ children, delay = 0, className = '', style }: { children: ReactNode; delay?: number; className?: string; style?: CSSProperties }) {
   return (
     <motion.div
       className={className}
+      style={style}
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
