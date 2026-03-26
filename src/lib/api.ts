@@ -46,19 +46,30 @@ export async function processIntake(
   formData.append('file', file, type === 'image' ? 'photo.jpg' : 'audio.webm')
   formData.append('type', type)
 
-  const response = await fetch(
-    `${supabaseUrl}/functions/v1/process-intake`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      body: formData,
-    },
-  )
-
-  if (!response.ok) {
-    const err = (await response.json()) as { error?: string }
-    throw new Error(err.error ?? 'Failed to process intake')
+  let lastError: Error | undefined
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)))
+    }
+    try {
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/process-intake`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: formData,
+        },
+      )
+      if (!response.ok) {
+        const err = (await response.json()) as { error?: string }
+        lastError = new Error(err.error ?? 'Failed to process intake')
+        continue
+      }
+      return response.json() as Promise<ExtractedInvoiceData>
+    } catch (err) {
+      lastError = err as Error
+    }
   }
 
-  return response.json() as Promise<ExtractedInvoiceData>
+  throw lastError
 }
