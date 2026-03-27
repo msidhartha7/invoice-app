@@ -534,10 +534,10 @@ export default function Landing() {
       <div className="bg-white border-t border-b py-10 px-6" style={{ borderColor: 'rgba(13,13,13,0.10)' }}>
         <div className="max-w-[1000px] mx-auto grid grid-cols-2 md:flex md:justify-around items-center gap-6">
           {[
-            { num: null, display: null, countTarget: 12000, suffix: '+', label: 'Invoices sent', decimals: 0 },
+            { num: null, display: null, countTarget: 500, suffix: '+', label: 'Invoices sent', decimals: 0 },
             { num: '⚡ <10 sec', label: 'Invoice generation' },
             { num: '💳 Built-in', label: 'Payment links' },
-            { num: null, display: null, countTarget: 4.9, suffix: '/5', label: 'App store rating', decimals: 1 },
+            // { num: null, display: null, countTarget: 4.9, suffix: '/5', label: 'App store rating', decimals: 1 },
             { num: '📱 Both', label: 'iOS & Android' },
           ].map((s, i) => (
             <Reveal key={i} delay={i * 0.08} className="text-center px-3 relative">
@@ -636,7 +636,7 @@ export default function Landing() {
               { icon: '🧾', title: 'Auto-Generated Invoices', body: 'Professional, branded invoice created instantly. Looks like you hired a designer.' },
               { icon: '💳', title: 'Built-in Payment Links', body: 'Shareable link so clients pay immediately — from their phone, no app required.' },
               { icon: '📄', title: 'PDF Download', body: 'Client-ready PDF sent to your email or downloaded instantly. Perfect for records.' },
-              { icon: '📱', title: 'iOS & Android', body: 'Works beautifully on both platforms. Native performance, not a web app.' },
+              { icon: '📱', title: 'iOS & Android', body: 'Works beautifully on both platforms. Native performance on a web app.' },
             ].map((feat, i) => (
               <Reveal key={i} delay={i * 0.08}>
                 <div
