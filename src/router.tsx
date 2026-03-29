@@ -6,6 +6,8 @@ import type { Invoice } from './types'
 import Landing from './pages/Landing'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfUse from './pages/TermsOfUse'
+import Blog from './pages/Blog'
+import BlogPost from './pages/BlogPost'
 import Login from './pages/Login'
 import Paywall from './pages/Paywall'
 import Dashboard from './pages/Dashboard'
@@ -61,6 +63,20 @@ const termsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/terms',
   component: TermsOfUse,
+})
+
+// Public: /blog
+const blogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/blog',
+  component: Blog,
+})
+
+// Public: /blog/:slug
+const blogPostRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/blog/$slug',
+  component: BlogPost,
 })
 
 // Public: /login
@@ -198,6 +214,8 @@ const routeTree = rootRoute.addChildren([
   landingRoute,
   privacyRoute,
   termsRoute,
+  blogRoute,
+  blogPostRoute,
   loginRoute,
   paywallRoute,
   authenticatedRoute.addChildren([

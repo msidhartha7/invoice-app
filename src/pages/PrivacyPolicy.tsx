@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
+import { SEO, SITE_URL } from '../components/SEO'
 
 const instrSerif = { fontFamily: "'Instrument Serif', Georgia, serif" } as const
 const dmSans = { fontFamily: "'DM Sans', system-ui, sans-serif" } as const
@@ -26,6 +27,13 @@ export default function PrivacyPolicy() {
   }, [])
 
   return (
+    <>
+      <SEO
+        title="Privacy Policy"
+        description="Read The Invoice App's Privacy Policy. Learn how we collect, use, and protect your data."
+        canonical={`${SITE_URL}/privacy`}
+        noindex={false}
+      />
     <div style={{ background: '#F7F5F0', minHeight: '100dvh', ...dmSans }}>
       {/* Nav */}
       <nav
@@ -171,5 +179,6 @@ export default function PrivacyPolicy() {
         </div>
       </footer>
     </div>
+    </>
   )
 }

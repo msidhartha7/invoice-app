@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /landing
+Allow: /blog
+Allow: /blog/
+Allow: /privacy
+Allow: /terms
+
+# Block authenticated/app pages — no value for search engines
+Disallow: /
+Disallow: /login
+Disallow: /paywall
+Disallow: /invoice/
+Disallow: /settings
+
+Sitemap: https://theinvoiceapp.co/sitemap.xml

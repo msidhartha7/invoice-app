@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
+import { SEO, SITE_URL } from '../components/SEO'
 
 const instrSerif = { fontFamily: "'Instrument Serif', Georgia, serif" } as const
 const dmSans = { fontFamily: "'DM Sans', system-ui, sans-serif" } as const
@@ -26,6 +27,13 @@ export default function TermsOfUse() {
   }, [])
 
   return (
+    <>
+      <SEO
+        title="Terms of Use"
+        description="Read The Invoice App's Terms of Use. Understand the rules and conditions for using our invoicing service."
+        canonical={`${SITE_URL}/terms`}
+        noindex={false}
+      />
     <div style={{ background: '#F7F5F0', minHeight: '100dvh', ...dmSans }}>
       {/* Nav */}
       <nav
@@ -185,5 +193,6 @@ export default function TermsOfUse() {
         </div>
       </footer>
     </div>
+    </>
   )
 }

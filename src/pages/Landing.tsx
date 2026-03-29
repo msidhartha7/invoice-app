@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 
 import { motion, useInView } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react'
+import { Helmet } from 'react-helmet-async'
+import { SEO, SITE_URL } from '../components/SEO'
 
 // ─── Shared animation config ──────────────────────────────────────────────────
 
@@ -98,6 +100,18 @@ function Nav({ scrolled, menuOpen, onMenuToggle }: { scrolled: boolean; menuOpen
               </a>
             </li>
           ))}
+          <li>
+            <Link
+              to="/blog"
+              className="text-sm transition-colors duration-150 relative group"
+              style={{ color: '#3A3A3A' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#0D0D0D')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#3A3A3A')}
+            >
+              Blog
+              <span className="absolute -bottom-0.5 left-0 h-px w-0 group-hover:w-full transition-all duration-200" style={{ background: '#0D0D0D' }} />
+            </Link>
+          </li>
         </ul>
 
         <div className="flex items-center gap-3">
@@ -155,6 +169,14 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
           {label}
         </a>
       ))}
+      <Link
+        to="/blog"
+        className="block py-3.5 text-[17px] border-b"
+        style={{ color: '#3A3A3A', borderColor: 'rgba(13,13,13,0.10)' }}
+        onClick={onClose}
+      >
+        Blog
+      </Link>
       <Link
         to="/login"
         className="mt-4 text-center text-white text-base font-semibold py-3.5 rounded-full"
@@ -435,7 +457,42 @@ export default function Landing() {
   const dmSans = { fontFamily: "'DM Sans', system-ui, sans-serif" } as const
   const instrSerif = { fontFamily: "'Instrument Serif', Georgia, serif" } as const
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'The Invoice App',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'iOS, Android, Web',
+    description: 'Snap your quote with your phone, instantly create a professional invoice, and get paid faster. The easiest invoicing app for contractors, photographers, and freelancers.',
+    url: `${SITE_URL}/landing`,
+    offers: {
+      '@type': 'Offer',
+      price: '1.00',
+      priceCurrency: 'USD',
+      priceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: '1.00',
+        priceCurrency: 'USD',
+        unitText: 'MONTH',
+      },
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'The Invoice App',
+      url: SITE_URL,
+    },
+  }
+
   return (
+    <>
+      <SEO
+        title="Snap a Quote, Send a Pro Invoice, Get Paid Faster"
+        description="Snap your quote with your phone, instantly create a professional invoice, and get paid faster. The easiest invoicing app for contractors, photographers, and freelancers. Just $1/month."
+        canonical={`${SITE_URL}/landing`}
+      />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </Helmet>
     <div id="top" style={{ background: '#F7F5F0', ...dmSans }}>
       <FlashBanner />
       <Nav scrolled={scrolled} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen(v => !v)} />
@@ -847,7 +904,7 @@ export default function Landing() {
           <div className="flex gap-14">
             {[
               { heading: 'Product', links: [['Features', '#features'], ['How it works', '#how-it-works'], ['Pricing', '#pricing']] },
-              { heading: 'Legal', links: [['Privacy Policy', '/privacy'], ['Terms of Use', '/terms']] },
+              { heading: 'Company', links: [['Blog', '/blog'], ['Privacy Policy', '/privacy'], ['Terms of Use', '/terms']] },
             ].map(group => (
               <div key={group.heading}>
                 <h4 className="text-[12px] font-bold tracking-[0.1em] uppercase mb-3" style={{ color: 'rgba(255,255,255,0.40)' }}>{group.heading}</h4>
@@ -869,5 +926,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </>
   )
 }

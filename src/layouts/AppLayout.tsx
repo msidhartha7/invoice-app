@@ -2,6 +2,7 @@ import { useRef, useState, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouterState } from '@tanstack/react-router'
+import { Helmet } from 'react-helmet-async'
 
 const PULL_THRESHOLD = 60
 
@@ -43,6 +44,10 @@ export function AppLayout({ children, bottomBar, onRefresh }: AppLayoutProps) {
   }, [onRefresh, refreshing, pullY])
 
   return (
+    <>
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
     <div className="min-h-[100dvh] bg-[#FAFAFA] flex flex-col max-w-md mx-auto relative">
       <div className="h-[3px] bg-[#6C47FF] flex-shrink-0" />
       <AnimatePresence mode="wait">
@@ -82,5 +87,6 @@ export function AppLayout({ children, bottomBar, onRefresh }: AppLayoutProps) {
         </div>
       )}
     </div>
+    </>
   )
 }
