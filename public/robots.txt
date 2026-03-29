@@ -12,4 +12,4 @@ Disallow: /paywall
 Disallow: /invoice/
 Disallow: /settings
 
-Sitemap: https://theinvoiceapp.co/sitemap.xml
+Sitemap: https://invoice-app.store/sitemap.xml
